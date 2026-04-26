@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { KeyboardEvent } from "react";
+import { containPopoverPosition } from "../geometry";
 import type { EditorMode, TabNoteData } from "../types";
 
 type FretPickerPopoverProps = {
@@ -10,6 +11,8 @@ type FretPickerPopoverProps = {
 };
 
 const FRETS = Array.from({ length: 23 }, (_, fret) => fret);
+const POPOVER_MAX_WIDTH = 316;
+const POPOVER_MARGIN = 16;
 
 export function FretPickerPopover({
   mode,
@@ -28,9 +31,20 @@ export function FretPickerPopover({
       return null;
     }
 
+    const containedPosition = containPopoverPosition(
+      mode.screenPoint,
+      { width: window.innerWidth, height: window.innerHeight },
+      {
+        width: POPOVER_MAX_WIDTH,
+        margin: POPOVER_MARGIN,
+        offsetY: 18,
+        minTop: 92,
+      },
+    );
+
     return {
-      left: Math.min(Math.max(mode.screenPoint.x, 24), window.innerWidth - 24),
-      top: Math.min(Math.max(mode.screenPoint.y + 18, 92), window.innerHeight - 24),
+      left: containedPosition.x,
+      top: containedPosition.y,
     };
   }, [mode]);
 
@@ -101,7 +115,12 @@ export function FretPickerPopover({
     <div
       ref={popoverRef}
       className="banjo-tab-fret-picker"
-      style={{ left: position.left, top: position.top }}
+      style={{
+        left: position.left,
+        top: position.top,
+        "--fret-picker-max-width": `${POPOVER_MAX_WIDTH}px`,
+        "--fret-picker-margin": `${POPOVER_MARGIN}px`,
+      }}
       role="dialog"
       aria-modal="false"
       aria-label={label}

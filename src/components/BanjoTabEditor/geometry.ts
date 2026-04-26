@@ -19,6 +19,23 @@ export type StringTrackGeometry = {
   rect: RectLike;
 };
 
+export type MeasureGeometry = {
+  measureId: string;
+  rect: RectLike;
+};
+
+export type ViewportSize = {
+  width: number;
+  height: number;
+};
+
+export type PopoverPositionOptions = {
+  width: number;
+  margin: number;
+  offsetY: number;
+  minTop: number;
+};
+
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
@@ -66,4 +83,56 @@ export function isPointInsideRect(point: ScreenPoint, rect: RectLike): boolean {
     point.y >= rect.top &&
     point.y <= rect.top + rect.height
   );
+}
+
+export function containPopoverPosition(
+  anchorPoint: ScreenPoint,
+  viewport: ViewportSize,
+  options: PopoverPositionOptions,
+): ScreenPoint {
+  const availableWidth = Math.max(viewport.width - options.margin * 2, 0);
+  const popoverWidth = Math.min(options.width, availableWidth);
+  const halfWidth = popoverWidth / 2;
+  const minLeft = options.margin + halfWidth;
+  const maxLeft = viewport.width - options.margin - halfWidth;
+
+  return {
+    x: clamp(anchorPoint.x, minLeft, Math.max(minLeft, maxLeft)),
+    y: Math.min(
+      Math.max(anchorPoint.y + options.offsetY, options.minTop),
+      viewport.height - options.margin,
+    ),
+  };
+}
+
+export function findMeasureDropIndexFromPoint(
+  point: ScreenPoint,
+  measures: MeasureGeometry[],
+): number | null {
+  if (measures.length === 0) {
+    return null;
+  }
+
+  const columnLeft = Math.min(...measures.map(({ rect }) => rect.left));
+  const columnRight = Math.max(...measures.map(({ rect }) => rect.left + rect.width));
+
+  if (point.x < columnLeft || point.x > columnRight) {
+    return null;
+  }
+
+  const firstMeasure = measures[0];
+  if (point.y < firstMeasure.rect.top) {
+    return 0;
+  }
+
+  for (let index = 0; index < measures.length; index += 1) {
+    const measure = measures[index];
+    const midpoint = measure.rect.top + measure.rect.height / 2;
+
+    if (point.y < midpoint) {
+      return index;
+    }
+  }
+
+  return measures.length;
 }

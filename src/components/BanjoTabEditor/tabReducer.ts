@@ -12,6 +12,8 @@ export type BanjoTabAction =
   | { type: "ADD_OR_UPDATE_NOTE"; location: NoteLocation; fret: number; noteId?: string }
   | { type: "MOVE_NOTE"; noteId: string; target: NoteLocation }
   | { type: "DELETE_NOTE"; noteId: string }
+  | { type: "MOVE_MEASURE"; measureId: string; targetIndex: number }
+  | { type: "DELETE_MEASURE"; measureId: string }
   | { type: "SET_EDITOR_MODE"; mode: EditorMode };
 
 export function createInitialEditorState(): BanjoTabEditorState {
@@ -64,6 +66,24 @@ export function banjoTabReducer(
             ...measure,
             notes: measure.notes.filter((note) => note.id !== action.noteId),
           })),
+        },
+      };
+
+    case "MOVE_MEASURE":
+      return {
+        ...state,
+        tab: {
+          ...state.tab,
+          measures: moveMeasure(state.tab.measures, action.measureId, action.targetIndex),
+        },
+      };
+
+    case "DELETE_MEASURE":
+      return {
+        ...state,
+        tab: {
+          ...state.tab,
+          measures: deleteMeasure(state.tab.measures, action.measureId),
         },
       };
 
@@ -161,4 +181,32 @@ function moveNote(
 
 function noteMatchesLocation(note: TabNoteData, location: NoteLocation): boolean {
   return note.stringIndex === location.stringIndex && note.position === location.position;
+}
+
+function moveMeasure(
+  measures: TabMeasureData[],
+  measureId: string,
+  targetIndex: number,
+): TabMeasureData[] {
+  const sourceIndex = measures.findIndex((measure) => measure.id === measureId);
+
+  if (sourceIndex === -1) {
+    return measures;
+  }
+
+  const nextMeasures = [...measures];
+  const [movedMeasure] = nextMeasures.splice(sourceIndex, 1);
+  const clampedTargetIndex = Math.min(Math.max(targetIndex, 0), nextMeasures.length);
+  nextMeasures.splice(clampedTargetIndex, 0, movedMeasure);
+  return nextMeasures;
+}
+
+function deleteMeasure(measures: TabMeasureData[], measureId: string): TabMeasureData[] {
+  if (measures.length === 1) {
+    return measures.map((measure) =>
+      measure.id === measureId ? { ...measure, notes: [] } : measure,
+    );
+  }
+
+  return measures.filter((measure) => measure.id !== measureId);
 }

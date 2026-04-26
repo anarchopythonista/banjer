@@ -50,6 +50,15 @@ export type EditorMode =
       pointer: ScreenPoint;
       pointerId?: number;
       overTrash: boolean;
+    }
+  | {
+      type: "dragging-measure";
+      measureId: string;
+      originIndex: number;
+      currentTargetIndex: number | null;
+      pointer: ScreenPoint;
+      pointerId?: number;
+      overTrash: boolean;
     };
 
 export type BanjoTabEditorState = {

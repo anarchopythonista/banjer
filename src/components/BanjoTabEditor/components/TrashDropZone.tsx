@@ -1,10 +1,16 @@
 type TrashDropZoneProps = {
   isActive: boolean;
   isOverTrash: boolean;
+  label?: string;
   onRegister: (element: HTMLDivElement | null) => void;
 };
 
-export function TrashDropZone({ isActive, isOverTrash, onRegister }: TrashDropZoneProps) {
+export function TrashDropZone({
+  isActive,
+  isOverTrash,
+  label = "Drop note to delete",
+  onRegister,
+}: TrashDropZoneProps) {
   if (!isActive) {
     return null;
   }
@@ -14,7 +20,7 @@ export function TrashDropZone({ isActive, isOverTrash, onRegister }: TrashDropZo
       <span className="banjo-tab-trash-icon" aria-hidden="true">
         Delete
       </span>
-      <span>Drop note to delete</span>
+      <span>{label}</span>
     </div>
   );
 }

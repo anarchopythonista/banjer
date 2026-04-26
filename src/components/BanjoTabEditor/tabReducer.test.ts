@@ -52,6 +52,43 @@ describe("banjoTabReducer", () => {
     ]);
   });
 
+  it("moves a note to a different slot on the current string", () => {
+    const state = reducerWith(stateWithNotes([{ id: "note-1", stringIndex: 0, position: 4, fret: 2 }]), {
+      type: "MOVE_NOTE",
+      noteId: "note-1",
+      target: location(0, 9),
+    });
+
+    expect(state.tab.measures[0].notes).toEqual([
+      { id: "note-1", stringIndex: 0, position: 9, fret: 2 },
+    ]);
+  });
+
+  it("keeps notes unchanged while dragging over an occupied target", () => {
+    const state = reducerWith(
+      stateWithNotes([
+        { id: "note-1", stringIndex: 0, position: 4, fret: 2 },
+        { id: "note-2", stringIndex: 2, position: 9, fret: 5 },
+      ]),
+      {
+        type: "SET_EDITOR_MODE",
+        mode: {
+          type: "dragging-note",
+          noteId: "note-1",
+          origin: location(0, 4),
+          currentTarget: location(2, 9),
+          pointer: { x: 200, y: 200 },
+          overTrash: false,
+        },
+      },
+    );
+
+    expect(state.tab.measures[0].notes).toEqual([
+      { id: "note-1", stringIndex: 0, position: 4, fret: 2 },
+      { id: "note-2", stringIndex: 2, position: 9, fret: 5 },
+    ]);
+  });
+
   it("replaces a conflicting note when moving onto an occupied string and position", () => {
     const state = reducerWith(
       stateWithNotes([
@@ -83,6 +120,45 @@ describe("banjoTabReducer", () => {
       { id: "note-2", stringIndex: 3, position: 12, fret: 5 },
     ]);
   });
+
+  it("moves a measure to a new index", () => {
+    const state = reducerWith(stateWithMeasures([
+      measure("measure-1", [{ id: "note-1", stringIndex: 0, position: 4, fret: 2 }]),
+      measure("measure-2", [{ id: "note-2", stringIndex: 1, position: 8, fret: 3 }]),
+      measure("measure-3", []),
+    ]), {
+      type: "MOVE_MEASURE",
+      measureId: "measure-1",
+      targetIndex: 2,
+    });
+
+    expect(state.tab.measures.map((item) => item.id)).toEqual(["measure-2", "measure-3", "measure-1"]);
+  });
+
+  it("deletes a measure when more than one measure exists", () => {
+    const state = reducerWith(stateWithMeasures([
+      measure("measure-1", [{ id: "note-1", stringIndex: 0, position: 4, fret: 2 }]),
+      measure("measure-2", [{ id: "note-2", stringIndex: 1, position: 8, fret: 3 }]),
+    ]), {
+      type: "DELETE_MEASURE",
+      measureId: "measure-1",
+    });
+
+    expect(state.tab.measures).toEqual([
+      measure("measure-2", [{ id: "note-2", stringIndex: 1, position: 8, fret: 3 }]),
+    ]);
+  });
+
+  it("clears notes instead of deleting the only measure", () => {
+    const state = reducerWith(stateWithMeasures([
+      measure("measure-1", [{ id: "note-1", stringIndex: 0, position: 4, fret: 2 }]),
+    ]), {
+      type: "DELETE_MEASURE",
+      measureId: "measure-1",
+    });
+
+    expect(state.tab.measures).toEqual([measure("measure-1", [])]);
+  });
 });
 
 function reducerWith(
@@ -105,6 +181,22 @@ function baseState(): BanjoTabEditorState {
 }
 
 function stateWithNotes(notes: BanjoTabEditorState["tab"]["measures"][number]["notes"]): BanjoTabEditorState {
+  return stateWithMeasures([measure("measure-1", notes)]);
+}
+
+function measure(
+  id: string,
+  notes: BanjoTabEditorState["tab"]["measures"][number]["notes"],
+) {
+  return {
+    id,
+    beats: 4,
+    subdivision: 4,
+    notes,
+  };
+}
+
+function stateWithMeasures(measures: BanjoTabEditorState["tab"]["measures"]): BanjoTabEditorState {
   return {
     mode: { type: "idle" },
     tab: {
@@ -115,14 +207,7 @@ function stateWithNotes(notes: BanjoTabEditorState["tab"]["measures"][number]["n
         { id: "string-4", label: "D", order: 4 },
         { id: "string-5", label: "g", order: 5 },
       ],
-      measures: [
-        {
-          id: "measure-1",
-          beats: 4,
-          subdivision: 4,
-          notes,
-        },
-      ],
+      measures,
     },
   };
 }

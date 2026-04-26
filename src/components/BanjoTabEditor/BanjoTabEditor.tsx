@@ -4,6 +4,7 @@ import { FretPickerPopover } from "./components/FretPickerPopover";
 import { TabStaff } from "./components/TabStaff";
 import { TrashDropZone } from "./components/TrashDropZone";
 import "./BanjoTabEditor.css";
+import { usePointerMeasureDrag } from "./hooks/usePointerMeasureDrag";
 import { usePointerNoteDrag } from "./hooks/usePointerNoteDrag";
 import { banjoTabReducer, createInitialEditorState } from "./tabReducer";
 import type { BanjoTabEditorState, NoteLocation, ScreenPoint, TabNoteData } from "./types";
@@ -18,6 +19,7 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
     initialState ?? createInitialEditorState(),
   );
   const dragApi = usePointerNoteDrag({ state, dispatch });
+  const measureDragApi = usePointerMeasureDrag({ state, dispatch });
   const currentPickerNote =
     state.mode.type === "fret-picker" && state.mode.noteId
       ? state.tab.measures
@@ -97,6 +99,7 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
         onSlotPress={handleSlotPress}
         onNotePress={handleNotePress}
         dragApi={dragApi}
+        measureDragApi={measureDragApi}
       />
       <FretPickerPopover
         mode={state.mode}
@@ -105,9 +108,16 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
         onClose={closeFretPicker}
       />
       <TrashDropZone
-        isActive={state.mode.type === "dragging-note"}
-        isOverTrash={state.mode.type === "dragging-note" && state.mode.overTrash}
-        onRegister={dragApi.registerTrashZone}
+        isActive={state.mode.type === "dragging-note" || state.mode.type === "dragging-measure"}
+        isOverTrash={
+          (state.mode.type === "dragging-note" || state.mode.type === "dragging-measure") &&
+          state.mode.overTrash
+        }
+        label={state.mode.type === "dragging-measure" ? "Drop measure to delete" : "Drop note to delete"}
+        onRegister={(element) => {
+          dragApi.registerTrashZone(element);
+          measureDragApi.registerTrashZone(element);
+        }}
       />
       {state.mode.type === "dragging-note" && draggedNote && (
         <div
@@ -116,6 +126,15 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
           aria-hidden="true"
         >
           {draggedNote.fret}
+        </div>
+      )}
+      {state.mode.type === "dragging-measure" && (
+        <div
+          className="banjo-tab-measure-drag-preview"
+          style={{ left: state.mode.pointer.x, top: state.mode.pointer.y }}
+          aria-hidden="true"
+        >
+          Measure {state.mode.originIndex + 1}
         </div>
       )}
     </main>

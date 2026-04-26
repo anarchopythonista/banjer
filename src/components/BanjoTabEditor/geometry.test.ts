@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  containPopoverPosition,
+  findMeasureDropIndexFromPoint,
   findNoteLocationFromPoint,
   isPointInsideRect,
   slotToPercent,
@@ -70,5 +72,40 @@ describe("BanjoTabEditor geometry", () => {
 
     expect(isPointInsideRect({ x: 80, y: 540 }, rect)).toBe(true);
     expect(isPointInsideRect({ x: 20, y: 540 }, rect)).toBe(false);
+  });
+
+  it("keeps a centered popover fully inside the horizontal viewport edges", () => {
+    const leftEdgePosition = containPopoverPosition(
+      { x: 12, y: 120 },
+      { width: 390, height: 800 },
+      { width: 316, margin: 16, offsetY: 18, minTop: 92 },
+    );
+    const rightEdgePosition = containPopoverPosition(
+      { x: 386, y: 120 },
+      { width: 390, height: 800 },
+      { width: 316, margin: 16, offsetY: 18, minTop: 92 },
+    );
+
+    expect(leftEdgePosition.x).toBe(174);
+    expect(rightEdgePosition.x).toBe(216);
+  });
+
+  it("maps a pointer point to a measure drop index", () => {
+    const measures = [
+      { measureId: "measure-1", rect: { left: 100, top: 100, width: 500, height: 120 } },
+      { measureId: "measure-2", rect: { left: 100, top: 240, width: 500, height: 120 } },
+      { measureId: "measure-3", rect: { left: 100, top: 380, width: 500, height: 120 } },
+    ];
+
+    expect(findMeasureDropIndexFromPoint({ x: 120, y: 110 }, measures)).toBe(0);
+    expect(findMeasureDropIndexFromPoint({ x: 120, y: 315 }, measures)).toBe(2);
+    expect(findMeasureDropIndexFromPoint({ x: 120, y: 560 }, measures)).toBe(3);
+  });
+
+  it("returns null for measure drop index when the point is outside the measure column", () => {
+    expect(findMeasureDropIndexFromPoint(
+      { x: 20, y: 110 },
+      [{ measureId: "measure-1", rect: { left: 100, top: 100, width: 500, height: 120 } }],
+    )).toBeNull();
   });
 });

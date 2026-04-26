@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent } from "storybook/test";
+import { expect, fireEvent, userEvent, within } from "storybook/test";
 import { DEFAULT_TUNING } from "./constants";
 import { BanjoTabEditor } from "./BanjoTabEditor";
 import type { BanjoTabEditorState } from "./types";
@@ -92,6 +92,30 @@ export const FretPickerOpen: Story = {
   },
 };
 
+export const FretPickerNearScreenEdge: Story = {
+  args: {
+    initialState: {
+      ...makeEditorState([
+        {
+          id: "measure-1",
+          notes: [{ id: "note-1", stringIndex: 0, position: 0, fret: 2 }],
+        },
+      ]),
+      mode: {
+        type: "fret-picker",
+        location: { measureId: "measure-1", stringIndex: 0, position: 0 },
+        noteId: "note-1",
+        screenPoint: { x: 10, y: 210 },
+      },
+    },
+  },
+  parameters: {
+    viewport: {
+      defaultViewport: "mobile1",
+    },
+  },
+};
+
 export const AddMeasureInteraction: Story = {
   args: {
     initialState: makeEditorState([{ id: "measure-1", notes: [] }]),
@@ -155,6 +179,227 @@ export const DraggingNoteVisualState: Story = {
   },
   play: async ({ canvas }) => {
     await expect(canvas.getByText("Drop note to delete")).toBeInTheDocument();
+  },
+};
+
+export const DraggingOverOccupiedNoteVisualState: Story = {
+  args: {
+    initialState: {
+      ...makeEditorState([
+        {
+          id: "measure-1",
+          notes: [
+            { id: "note-1", stringIndex: 0, position: 4, fret: 2 },
+            { id: "note-2", stringIndex: 2, position: 9, fret: 5 },
+          ],
+        },
+      ]),
+      mode: {
+        type: "dragging-note",
+        noteId: "note-1",
+        origin: { measureId: "measure-1", stringIndex: 0, position: 4 },
+        currentTarget: { measureId: "measure-1", stringIndex: 2, position: 9 },
+        pointer: { x: 520, y: 310 },
+        overTrash: false,
+      },
+    },
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("button", { name: "Edit fret 2 on string 1, slot 5" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Edit fret 5 on string 3, slot 10" })).toBeInTheDocument();
+  },
+};
+
+export const DragDropReplacesOnDrop: Story = {
+  args: {
+    initialState: makeEditorState([
+      {
+        id: "measure-1",
+        notes: [
+          { id: "note-1", stringIndex: 0, position: 4, fret: 2 },
+          { id: "note-2", stringIndex: 2, position: 9, fret: 5 },
+        ],
+      },
+    ]),
+  },
+  play: async ({ canvas }) => {
+    const draggedNote = canvas.getByRole("button", { name: "Edit fret 2 on string 1, slot 5" });
+    const dropSlot = canvas.getByLabelText("Set string 3 slot 10");
+    const startRect = draggedNote.getBoundingClientRect();
+    const endRect = dropSlot.getBoundingClientRect();
+    const startPoint = {
+      clientX: startRect.left + startRect.width / 2,
+      clientY: startRect.top + startRect.height / 2,
+    };
+    const endPoint = {
+      clientX: endRect.left + endRect.width / 2,
+      clientY: endRect.top + endRect.height / 2,
+    };
+
+    fireEvent.pointerDown(draggedNote, {
+      ...startPoint,
+      button: 0,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+    fireEvent.pointerMove(draggedNote, {
+      ...endPoint,
+      button: 0,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+
+    await expect(canvas.getByRole("button", { name: "Edit fret 5 on string 3, slot 10" })).toBeInTheDocument();
+
+    fireEvent.pointerUp(draggedNote, {
+      ...endPoint,
+      button: 0,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+
+    await expect(canvas.getByRole("button", { name: "Edit fret 2 on string 3, slot 10" })).toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Edit fret 5 on string 3, slot 10" })).not.toBeInTheDocument();
+  },
+};
+
+export const DraggingMeasureVisualState: Story = {
+  args: {
+    initialState: {
+      ...makeEditorState([
+        {
+          id: "measure-1",
+          notes: [{ id: "note-1", stringIndex: 0, position: 4, fret: 2 }],
+        },
+        {
+          id: "measure-2",
+          notes: [{ id: "note-2", stringIndex: 1, position: 8, fret: 3 }],
+        },
+      ]),
+      mode: {
+        type: "dragging-measure",
+        measureId: "measure-1",
+        originIndex: 0,
+        currentTargetIndex: 2,
+        pointer: { x: 520, y: 310 },
+        overTrash: false,
+      },
+    },
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText("Drop measure to delete")).toBeInTheDocument();
+  },
+};
+
+export const DragDropMeasureReorders: Story = {
+  args: {
+    initialState: makeEditorState([
+      {
+        id: "measure-1",
+        notes: [{ id: "note-1", stringIndex: 0, position: 4, fret: 2 }],
+      },
+      {
+        id: "measure-2",
+        notes: [{ id: "note-2", stringIndex: 1, position: 8, fret: 3 }],
+      },
+    ]),
+  },
+  play: async ({ canvas, canvasElement }) => {
+    const handle = canvas.getByRole("button", { name: "Drag measure 1" });
+    const measuresBefore = canvasElement.querySelectorAll(".banjo-tab-measure");
+    const startRect = handle.getBoundingClientRect();
+    const endRect = measuresBefore[1].getBoundingClientRect();
+    const startPoint = {
+      clientX: startRect.left + startRect.width / 2,
+      clientY: startRect.top + startRect.height / 2,
+    };
+    const endPoint = {
+      clientX: endRect.left + endRect.width / 2,
+      clientY: endRect.top + endRect.height * 0.75,
+    };
+
+    fireEvent.pointerDown(handle, {
+      ...startPoint,
+      button: 0,
+      pointerId: 2,
+      pointerType: "mouse",
+    });
+    fireEvent.pointerMove(handle, {
+      ...endPoint,
+      button: 0,
+      pointerId: 2,
+      pointerType: "mouse",
+    });
+    fireEvent.pointerUp(handle, {
+      ...endPoint,
+      button: 0,
+      pointerId: 2,
+      pointerType: "mouse",
+    });
+
+    const measuresAfter = canvasElement.querySelectorAll(".banjo-tab-measure");
+    await expect(within(measuresAfter[0] as HTMLElement).getByRole("button", { name: /Edit fret 3/ })).toBeInTheDocument();
+    await expect(within(measuresAfter[1] as HTMLElement).getByRole("button", { name: /Edit fret 2/ })).toBeInTheDocument();
+  },
+};
+
+export const DragDropOnlyMeasureToDeleteClearsNotes: Story = {
+  args: {
+    initialState: makeEditorState([
+      {
+        id: "measure-1",
+        notes: [{ id: "note-1", stringIndex: 0, position: 4, fret: 2 }],
+      },
+    ]),
+  },
+  play: async ({ canvas }) => {
+    const handle = canvas.getByRole("button", { name: "Drag measure 1" });
+    const startRect = handle.getBoundingClientRect();
+    const startPoint = {
+      clientX: startRect.left + startRect.width / 2,
+      clientY: startRect.top + startRect.height / 2,
+    };
+
+    fireEvent.pointerDown(handle, {
+      ...startPoint,
+      button: 0,
+      pointerId: 3,
+      pointerType: "mouse",
+    });
+    fireEvent.pointerMove(handle, {
+      clientX: startPoint.clientX,
+      clientY: startPoint.clientY + 40,
+      button: 0,
+      pointerId: 3,
+      pointerType: "mouse",
+    });
+
+    const trashZone = canvas.getByText("Drop measure to delete").closest(".banjo-tab-trash-zone");
+    const trashRect = trashZone?.getBoundingClientRect();
+
+    if (!trashRect) {
+      throw new Error("Trash zone did not render");
+    }
+
+    const endPoint = {
+      clientX: trashRect.left + trashRect.width / 2,
+      clientY: trashRect.top + trashRect.height / 2,
+    };
+    fireEvent.pointerMove(handle, {
+      ...endPoint,
+      button: 0,
+      pointerId: 3,
+      pointerType: "mouse",
+    });
+    fireEvent.pointerUp(handle, {
+      ...endPoint,
+      button: 0,
+      pointerId: 3,
+      pointerType: "mouse",
+    });
+
+    await expect(canvas.queryByRole("button", { name: /Edit fret 2/ })).not.toBeInTheDocument();
+    await expect(canvas.getByLabelText("Measure 1")).toBeInTheDocument();
   },
 };
 

@@ -1,17 +1,16 @@
 import { useCallback, useRef } from "react";
 import type { Dispatch, PointerEvent as ReactPointerEvent } from "react";
-import { SLOTS_PER_MEASURE } from "../constants";
 import {
-  findNoteLocationFromPoint,
+  findMeasureDropIndexFromPoint,
   isPointInsideRect,
-  type StringTrackGeometry,
+  type MeasureGeometry,
 } from "../geometry";
 import type { BanjoTabAction } from "../tabReducer";
-import type { BanjoTabEditorState, NoteLocation, ScreenPoint, TabNoteData } from "../types";
+import type { BanjoTabEditorState, ScreenPoint } from "../types";
 
-type ActivePointer = {
-  note: TabNoteData;
-  origin: NoteLocation;
+type ActiveMeasurePointer = {
+  measureId: string;
+  originIndex: number;
   pointerId: number;
   startPoint: ScreenPoint;
   isDragging: boolean;
@@ -19,7 +18,7 @@ type ActivePointer = {
   captureElement: HTMLElement;
 };
 
-type UsePointerNoteDragArgs = {
+type UsePointerMeasureDragArgs = {
   state: BanjoTabEditorState;
   dispatch: Dispatch<BanjoTabAction>;
 };
@@ -28,48 +27,33 @@ const DRAG_THRESHOLD_PX = 6;
 const TOUCH_CANCEL_THRESHOLD_PX = 10;
 const TOUCH_LONG_PRESS_MS = 350;
 
-export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) {
-  const activePointerRef = useRef<ActivePointer | null>(null);
-  const stringTrackElementsRef = useRef(new Map<string, HTMLElement>());
+export function usePointerMeasureDrag({ state, dispatch }: UsePointerMeasureDragArgs) {
+  const activePointerRef = useRef<ActiveMeasurePointer | null>(null);
+  const measureElementsRef = useRef(new Map<string, HTMLElement>());
   const trashElementRef = useRef<HTMLDivElement | null>(null);
-  const suppressNextClickRef = useRef(false);
 
-  const registerStringTrack = useCallback(
-    (measureId: string, stringIndex: number, element: HTMLElement | null) => {
-      const key = makeTrackKey(measureId, stringIndex);
-
-      if (element) {
-        stringTrackElementsRef.current.set(key, element);
-      } else {
-        stringTrackElementsRef.current.delete(key);
-      }
-    },
-    [],
-  );
+  const registerMeasure = useCallback((measureId: string, element: HTMLElement | null) => {
+    if (element) {
+      measureElementsRef.current.set(measureId, element);
+    } else {
+      measureElementsRef.current.delete(measureId);
+    }
+  }, []);
 
   const registerTrashZone = useCallback((element: HTMLDivElement | null) => {
     trashElementRef.current = element;
   }, []);
 
-  const shouldSuppressClick = useCallback(() => {
-    if (!suppressNextClickRef.current) {
-      return false;
-    }
-
-    suppressNextClickRef.current = false;
-    return true;
-  }, []);
-
   const startDragging = useCallback(
-    (activePointer: ActivePointer, point: ScreenPoint) => {
+    (activePointer: ActiveMeasurePointer, point: ScreenPoint) => {
       activePointer.isDragging = true;
       dispatch({
         type: "SET_EDITOR_MODE",
         mode: {
-          type: "dragging-note",
-          noteId: activePointer.note.id,
-          origin: activePointer.origin,
-          currentTarget: getTargetLocation(point, stringTrackElementsRef.current),
+          type: "dragging-measure",
+          measureId: activePointer.measureId,
+          originIndex: activePointer.originIndex,
+          currentTargetIndex: getMeasureDropIndex(point, measureElementsRef.current),
           pointer: point,
           pointerId: activePointer.pointerId,
           overTrash: getOverTrash(point, trashElementRef.current),
@@ -79,22 +63,17 @@ export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) 
     [dispatch],
   );
 
-  const handleNotePointerDown = useCallback(
-    (
-      note: TabNoteData,
-      origin: NoteLocation,
-      event: ReactPointerEvent<HTMLElement>,
-    ) => {
+  const handleMeasurePointerDown = useCallback(
+    (measureId: string, measureIndex: number, event: ReactPointerEvent<HTMLElement>) => {
       if (event.button !== 0) {
         return;
       }
 
-      const point = getPointerPoint(event);
-      const activePointer: ActivePointer = {
-        note,
-        origin,
+      const activePointer: ActiveMeasurePointer = {
+        measureId,
+        originIndex: measureIndex,
         pointerId: event.pointerId,
-        startPoint: point,
+        startPoint: getPointerPoint(event),
         isDragging: false,
         longPressTimer: null,
         captureElement: event.currentTarget,
@@ -104,7 +83,7 @@ export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) 
 
       if (event.pointerType === "touch") {
         activePointer.longPressTimer = window.setTimeout(() => {
-          startDragging(activePointer, point);
+          startDragging(activePointer, activePointer.startPoint);
         }, TOUCH_LONG_PRESS_MS);
       }
 
@@ -113,7 +92,7 @@ export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) 
     [startDragging],
   );
 
-  const handleNotePointerMove = useCallback(
+  const handleMeasurePointerMove = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
       const activePointer = activePointerRef.current;
 
@@ -142,10 +121,10 @@ export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) 
       dispatch({
         type: "SET_EDITOR_MODE",
         mode: {
-          type: "dragging-note",
-          noteId: activePointer.note.id,
-          origin: activePointer.origin,
-          currentTarget: getTargetLocation(point, stringTrackElementsRef.current),
+          type: "dragging-measure",
+          measureId: activePointer.measureId,
+          originIndex: activePointer.originIndex,
+          currentTargetIndex: getMeasureDropIndex(point, measureElementsRef.current),
           pointer: point,
           pointerId: activePointer.pointerId,
           overTrash: getOverTrash(point, trashElementRef.current),
@@ -155,7 +134,7 @@ export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) 
     [dispatch, startDragging],
   );
 
-  const handleNotePointerUp = useCallback(
+  const handleMeasurePointerUp = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
       const activePointer = activePointerRef.current;
 
@@ -169,16 +148,19 @@ export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) 
       if (activePointer.isDragging) {
         const point = getPointerPoint(event);
         const overTrash = getOverTrash(point, trashElementRef.current);
-        const target = getTargetLocation(point, stringTrackElementsRef.current);
+        const rawTargetIndex = getMeasureDropIndex(point, measureElementsRef.current);
 
         if (overTrash) {
-          dispatch({ type: "DELETE_NOTE", noteId: activePointer.note.id });
-        } else if (target) {
-          dispatch({ type: "MOVE_NOTE", noteId: activePointer.note.id, target });
+          dispatch({ type: "DELETE_MEASURE", measureId: activePointer.measureId });
+        } else if (rawTargetIndex !== null) {
+          dispatch({
+            type: "MOVE_MEASURE",
+            measureId: activePointer.measureId,
+            targetIndex: toPostRemovalIndex(activePointer.originIndex, rawTargetIndex),
+          });
         }
 
         dispatch({ type: "SET_EDITOR_MODE", mode: { type: "idle" } });
-        suppressNextClickRef.current = true;
       }
 
       activePointerRef.current = null;
@@ -199,7 +181,6 @@ export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) 
 
       if (activePointer.isDragging) {
         dispatch({ type: "SET_EDITOR_MODE", mode: { type: "idle" } });
-        suppressNextClickRef.current = true;
       }
 
       activePointerRef.current = null;
@@ -207,60 +188,43 @@ export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) 
     [dispatch],
   );
 
-  const moveNoteByKeyboard = useCallback(
-    (note: TabNoteData, origin: NoteLocation, direction: "up" | "down" | "left" | "right") => {
-      const stringCount = state.tab.tuning.length;
-      const target = {
-        measureId: origin.measureId,
-        stringIndex:
-          direction === "up"
-            ? Math.max(origin.stringIndex - 1, 0)
-            : direction === "down"
-              ? Math.min(origin.stringIndex + 1, stringCount - 1)
-              : origin.stringIndex,
-        position:
-          direction === "left"
-            ? Math.max(origin.position - 1, 0)
-            : direction === "right"
-              ? Math.min(origin.position + 1, SLOTS_PER_MEASURE - 1)
-              : origin.position,
-      };
+  const moveMeasureByKeyboard = useCallback(
+    (measureId: string, measureIndex: number, direction: "up" | "down") => {
+      const targetIndex =
+        direction === "up"
+          ? Math.max(measureIndex - 1, 0)
+          : Math.min(measureIndex + 1, state.tab.measures.length - 1);
 
-      dispatch({ type: "MOVE_NOTE", noteId: note.id, target });
+      dispatch({ type: "MOVE_MEASURE", measureId, targetIndex });
     },
-    [dispatch, state.tab.tuning.length],
+    [dispatch, state.tab.measures.length],
   );
 
   return {
-    registerStringTrack,
+    registerMeasure,
     registerTrashZone,
-    shouldSuppressClick,
-    notePointerHandlers: {
-      onPointerDown: handleNotePointerDown,
-      onPointerMove: handleNotePointerMove,
-      onPointerUp: handleNotePointerUp,
+    measurePointerHandlers: {
+      onPointerDown: handleMeasurePointerDown,
+      onPointerMove: handleMeasurePointerMove,
+      onPointerUp: handleMeasurePointerUp,
       onPointerCancel: cancelDragging,
       onLostPointerCapture: cancelDragging,
     },
-    moveNoteByKeyboard,
-    deleteNoteByKeyboard: (noteId: string) => dispatch({ type: "DELETE_NOTE", noteId }),
+    moveMeasureByKeyboard,
+    deleteMeasureByKeyboard: (measureId: string) => dispatch({ type: "DELETE_MEASURE", measureId }),
   };
 }
 
-function getTargetLocation(
+function getMeasureDropIndex(
   point: ScreenPoint,
-  trackElements: Map<string, HTMLElement>,
-): NoteLocation | null {
-  const tracks: StringTrackGeometry[] = Array.from(trackElements.entries()).map(([key, element]) => {
-    const [measureId, stringIndex] = key.split(":");
-    return {
-      measureId,
-      stringIndex: Number(stringIndex),
-      rect: element.getBoundingClientRect(),
-    };
-  });
+  measureElements: Map<string, HTMLElement>,
+): number | null {
+  const measures: MeasureGeometry[] = Array.from(measureElements.entries()).map(([measureId, element]) => ({
+    measureId,
+    rect: element.getBoundingClientRect(),
+  }));
 
-  return findNoteLocationFromPoint(point, tracks, SLOTS_PER_MEASURE);
+  return findMeasureDropIndexFromPoint(point, measures);
 }
 
 function getOverTrash(point: ScreenPoint, trashElement: HTMLDivElement | null): boolean {
@@ -275,15 +239,17 @@ function getDistance(start: ScreenPoint, current: ScreenPoint): number {
   return Math.hypot(current.x - start.x, current.y - start.y);
 }
 
-function clearLongPressTimer(activePointer: ActivePointer) {
+function clearLongPressTimer(activePointer: ActiveMeasurePointer) {
   if (activePointer.longPressTimer !== null) {
     window.clearTimeout(activePointer.longPressTimer);
     activePointer.longPressTimer = null;
   }
 }
 
-function releasePointerCapture(activePointer: ActivePointer) {
-  if (activePointer.captureElement.hasPointerCapture(activePointer.pointerId)) {
+function releasePointerCapture(activePointer: ActiveMeasurePointer) {
+  if (
+    activePointer.captureElement.hasPointerCapture(activePointer.pointerId)
+  ) {
     activePointer.captureElement.releasePointerCapture(activePointer.pointerId);
   }
 }
@@ -296,6 +262,6 @@ function safeSetPointerCapture(element: HTMLElement, pointerId: number) {
   }
 }
 
-function makeTrackKey(measureId: string, stringIndex: number) {
-  return `${measureId}:${stringIndex}`;
+function toPostRemovalIndex(sourceIndex: number, rawTargetIndex: number) {
+  return rawTargetIndex > sourceIndex ? rawTargetIndex - 1 : rawTargetIndex;
 }
