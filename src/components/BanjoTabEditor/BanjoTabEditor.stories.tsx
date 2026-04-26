@@ -131,6 +131,33 @@ export const EditNoteInteraction: Story = {
   },
 };
 
+export const DraggingNoteVisualState: Story = {
+  args: {
+    initialState: {
+      ...makeEditorState([
+        {
+          id: "measure-1",
+          notes: [
+            { id: "note-1", stringIndex: 0, position: 4, fret: 2 },
+            { id: "note-2", stringIndex: 2, position: 9, fret: 5 },
+          ],
+        },
+      ]),
+      mode: {
+        type: "dragging-note",
+        noteId: "note-1",
+        origin: { measureId: "measure-1", stringIndex: 0, position: 4 },
+        currentTarget: { measureId: "measure-1", stringIndex: 2, position: 9 },
+        pointer: { x: 520, y: 310 },
+        overTrash: false,
+      },
+    },
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText("Drop note to delete")).toBeInTheDocument();
+  },
+};
+
 export const MobileLikeNarrowWidth: Story = {
   args: {
     initialState: makeEditorState([

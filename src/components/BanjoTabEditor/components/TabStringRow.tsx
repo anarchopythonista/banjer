@@ -1,15 +1,19 @@
 import type { MouseEvent } from "react";
 import { SLOTS_PER_MEASURE } from "../constants";
-import type { BanjoString, NoteLocation, ScreenPoint, TabNoteData } from "../types";
+import type { BanjoString, EditorMode, NoteLocation, ScreenPoint, TabNoteData } from "../types";
+import { SlotHighlight } from "./SlotHighlight";
 import { TabNote } from "./TabNote";
+import type { usePointerNoteDrag } from "../hooks/usePointerNoteDrag";
 
 type TabStringRowProps = {
   measureId: string;
   string: BanjoString;
   stringIndex: number;
   notes: TabNoteData[];
+  mode: EditorMode;
   onSlotPress: (location: NoteLocation, screenPoint: ScreenPoint) => void;
   onNotePress: (note: TabNoteData, location: NoteLocation, screenPoint: ScreenPoint) => void;
+  dragApi: ReturnType<typeof usePointerNoteDrag>;
 };
 
 export function TabStringRow({
@@ -17,8 +21,10 @@ export function TabStringRow({
   string,
   stringIndex,
   notes,
+  mode,
   onSlotPress,
   onNotePress,
+  dragApi,
 }: TabStringRowProps) {
   const handleSlotClick = (position: number) => (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
@@ -41,6 +47,7 @@ export function TabStringRow({
         className="banjo-tab-string-track"
         role="gridcell"
         aria-label={`String ${string.order}, ${string.label}`}
+        ref={(element) => dragApi.registerStringTrack(measureId, stringIndex, element)}
       >
         <div className="banjo-tab-slot-grid">
           {Array.from({ length: SLOTS_PER_MEASURE }).map((_, index) => (
@@ -53,12 +60,26 @@ export function TabStringRow({
             />
           ))}
         </div>
+        {mode.type === "dragging-note" &&
+          mode.currentTarget?.measureId === measureId &&
+          mode.currentTarget.stringIndex === stringIndex && (
+            <SlotHighlight position={mode.currentTarget.position} />
+          )}
         {notes.map((note) => (
           <TabNote
             key={note.id}
             note={note}
             measureId={measureId}
             onNotePress={onNotePress}
+            onNotePointerDown={dragApi.notePointerHandlers.onPointerDown}
+            onNotePointerMove={dragApi.notePointerHandlers.onPointerMove}
+            onNotePointerUp={dragApi.notePointerHandlers.onPointerUp}
+            onNotePointerCancel={dragApi.notePointerHandlers.onPointerCancel}
+            onNoteLostPointerCapture={dragApi.notePointerHandlers.onLostPointerCapture}
+            onMoveNoteByKeyboard={dragApi.moveNoteByKeyboard}
+            onDeleteNoteByKeyboard={dragApi.deleteNoteByKeyboard}
+            shouldSuppressClick={dragApi.shouldSuppressClick}
+            isDragging={mode.type === "dragging-note" && mode.noteId === note.id}
           />
         ))}
       </div>

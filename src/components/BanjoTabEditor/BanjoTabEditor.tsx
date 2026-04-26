@@ -2,7 +2,9 @@ import { useReducer } from "react";
 import { AddMeasureButton } from "./components/AddMeasureButton";
 import { FretPickerPopover } from "./components/FretPickerPopover";
 import { TabStaff } from "./components/TabStaff";
+import { TrashDropZone } from "./components/TrashDropZone";
 import "./BanjoTabEditor.css";
+import { usePointerNoteDrag } from "./hooks/usePointerNoteDrag";
 import { banjoTabReducer, createInitialEditorState } from "./tabReducer";
 import type { BanjoTabEditorState, NoteLocation, ScreenPoint, TabNoteData } from "./types";
 
@@ -15,8 +17,15 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
     banjoTabReducer,
     initialState ?? createInitialEditorState(),
   );
+  const dragApi = usePointerNoteDrag({ state, dispatch });
   const currentPickerNote =
     state.mode.type === "fret-picker" && state.mode.noteId
+      ? state.tab.measures
+          .flatMap((measure) => measure.notes)
+          .find((note) => note.id === state.mode.noteId)
+      : undefined;
+  const draggedNote =
+    state.mode.type === "dragging-note"
       ? state.tab.measures
           .flatMap((measure) => measure.notes)
           .find((note) => note.id === state.mode.noteId)
@@ -82,13 +91,33 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
         </div>
         <AddMeasureButton onAddMeasure={() => dispatch({ type: "ADD_MEASURE" })} />
       </header>
-      <TabStaff tab={state.tab} onSlotPress={handleSlotPress} onNotePress={handleNotePress} />
+      <TabStaff
+        tab={state.tab}
+        mode={state.mode}
+        onSlotPress={handleSlotPress}
+        onNotePress={handleNotePress}
+        dragApi={dragApi}
+      />
       <FretPickerPopover
         mode={state.mode}
         currentNote={currentPickerNote}
         onSelectFret={handleSelectFret}
         onClose={closeFretPicker}
       />
+      <TrashDropZone
+        isActive={state.mode.type === "dragging-note"}
+        isOverTrash={state.mode.type === "dragging-note" && state.mode.overTrash}
+        onRegister={dragApi.registerTrashZone}
+      />
+      {state.mode.type === "dragging-note" && draggedNote && (
+        <div
+          className="banjo-tab-drag-preview"
+          style={{ left: state.mode.pointer.x, top: state.mode.pointer.y }}
+          aria-hidden="true"
+        >
+          {draggedNote.fret}
+        </div>
+      )}
     </main>
   );
 }

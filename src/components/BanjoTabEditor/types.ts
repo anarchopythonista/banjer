@@ -48,6 +48,7 @@ export type EditorMode =
       origin: NoteLocation;
       currentTarget: NoteLocation | null;
       pointer: ScreenPoint;
+      pointerId?: number;
       overTrash: boolean;
     };
 
