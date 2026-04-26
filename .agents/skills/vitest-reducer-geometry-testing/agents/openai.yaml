@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vitest Reducer Geometry Testing"
+  short_description: "Test reducers and geometry before UI"
+  default_prompt: "Use $vitest-reducer-geometry-testing to write focused Vitest tests for reducer and geometry logic before adding UI tests."

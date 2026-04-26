@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pointer Interactions"
+  short_description: "Build robust Pointer Events interactions"
+  default_prompt: "Use $pointer-interactions to implement Pointer Events, pointer capture, cancellation, and touch scrolling behavior for this interaction."

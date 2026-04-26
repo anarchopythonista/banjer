@@ -1,0 +1,4 @@
+interface:
+  display_name: "React Component Architecture"
+  short_description: "Design composable React component boundaries"
+  default_prompt: "Use $react-component-architecture to design or refactor this React UI into composable components with clear prop boundaries."

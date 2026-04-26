@@ -1,0 +1,4 @@
+interface:
+  display_name: "TypeScript State Modeling"
+  short_description: "Model typed React state and reducers"
+  default_prompt: "Use $typescript-state-modeling to design TypeScript domain state, editor modes, and reducer actions before implementing this feature."
