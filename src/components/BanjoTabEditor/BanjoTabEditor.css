@@ -1,45 +1,97 @@
 .banjo-tab-editor {
-  --tab-ink: #1d1b1b;
-  --tab-muted: #625f57;
-  --tab-paper: #fffdf7;
-  --tab-panel: #f5efe3;
-  --tab-border: #d8cdbb;
-  --tab-line: #34312c;
-  --tab-accent: #2f6f73;
-  --tab-focus: #c7662f;
+  --tab-ink: var(--app-ink, #1d1b1b);
+  --tab-muted: var(--app-muted, #625f57);
+  --tab-paper: var(--app-paper, #fffdf7);
+  --tab-panel: var(--app-panel, #f5efe3);
+  --tab-border: var(--app-border, #d8cdbb);
+  --tab-line: var(--app-line, #34312c);
+  --tab-accent: var(--app-accent, #2f6f73);
+  --tab-focus: var(--app-focus, #c7662f);
+  --tab-measure-bg: var(--app-measure-bg, rgba(255, 253, 247, 0.92));
+  --tab-measure-active-border: var(--app-measure-active-border, rgba(47, 111, 115, 0.6));
+  --tab-measure-handle-border: var(--app-measure-handle-border, rgba(47, 111, 115, 0.22));
+  --tab-drag-ring: var(--app-drag-ring, rgba(47, 111, 115, 0.18));
+  --tab-hover-bg: var(--app-hover-bg, rgba(47, 111, 115, 0.08));
+  --tab-focus-bg: var(--app-focus-bg, rgba(199, 102, 47, 0.12));
+  --tab-slot-border: var(--app-slot-border, rgba(52, 49, 44, 0.1));
+  --tab-highlight-border: var(--app-highlight-border, rgba(47, 111, 115, 0.65));
+  --tab-highlight-bg: var(--app-highlight-bg, rgba(47, 111, 115, 0.12));
+  --tab-note-bg: var(--app-note-bg, #fffdf7);
+  --tab-popover-border: var(--app-popover-border, rgba(47, 111, 115, 0.28));
+  --tab-popover-shadow: var(
+    --app-popover-shadow,
+    0 18px 42px rgba(43, 34, 24, 0.22),
+    0 3px 10px rgba(43, 34, 24, 0.1)
+  );
+  --tab-fret-bg: var(--app-fret-bg, #fffaf0);
+  --tab-fret-option-bg: var(--app-fret-option-bg, #ffffff);
+  --tab-trash-bg: var(--app-trash-bg, rgba(255, 247, 237, 0.96));
+  --tab-trash-border: var(--app-trash-border, rgba(110, 56, 41, 0.46));
+  --tab-trash-ink: var(--app-trash-ink, #593328);
+  --tab-trash-icon-bg: var(--app-trash-icon-bg, rgba(255, 255, 255, 0.2));
+  --tab-floating-shadow: var(--app-floating-shadow, 0 18px 38px rgba(43, 34, 24, 0.18));
+  --tab-preview-shadow: var(--app-preview-shadow, 0 12px 26px rgba(43, 34, 24, 0.24));
+  --tab-danger: var(--app-danger, #a43d28);
 
   min-height: 100svh;
   box-sizing: border-box;
-  padding: clamp(20px, 4vw, 48px);
+  padding: clamp(18px, 3vw, 36px) clamp(20px, 4vw, 48px) clamp(20px, 4vw, 48px);
   color: var(--tab-ink);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.68)),
-    var(--tab-paper);
+  background: var(--app-bg, var(--tab-paper));
   text-align: left;
 }
 
 .banjo-tab-editor-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 20px;
   max-width: 1120px;
-  margin: 0 auto 28px;
+  margin: 0 auto 24px;
 }
 
-.banjo-tab-editor h1 {
+.banjo-tab-document-title {
   margin: 0;
   color: var(--tab-ink);
   font-size: clamp(2rem, 4vw, 3.8rem);
   line-height: 1;
   font-weight: 700;
   letter-spacing: 0;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
-.banjo-tab-editor p {
-  margin: 10px 0 0;
-  color: var(--tab-muted);
-  font-size: 1rem;
+.banjo-tab-document-title-button,
+.banjo-tab-document-title-input {
+  width: 100%;
+  min-width: 0;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: 0;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.banjo-tab-document-title-button {
+  display: block;
+  cursor: text;
+}
+
+.banjo-tab-document-title-button:hover {
+  background: var(--app-title-hover-bg, var(--tab-hover-bg));
+}
+
+.banjo-tab-document-title-button:focus-visible,
+.banjo-tab-document-title-input:focus-visible {
+  border-color: var(--tab-measure-active-border);
+  outline: 3px solid var(--tab-focus);
+  outline-offset: 2px;
+  background: var(--app-title-focus-bg, rgba(255, 255, 255, 0.84));
 }
 
 .banjo-tab-add-measure {
@@ -59,7 +111,7 @@
 }
 
 .banjo-tab-add-measure:hover {
-  background: #255b5e;
+  background: var(--app-accent-hover, #255b5e);
 }
 
 .banjo-tab-add-measure:focus-visible {
@@ -83,19 +135,19 @@
   height: 8px;
   border-radius: 999px;
   background: var(--tab-accent);
-  box-shadow: 0 0 0 4px rgba(47, 111, 115, 0.14);
+  box-shadow: 0 0 0 4px var(--tab-drag-ring);
 }
 
 .banjo-tab-measure {
   overflow: hidden;
   border: 1px solid var(--tab-border);
   border-radius: 8px;
-  background: rgba(255, 253, 247, 0.92);
+  background: var(--tab-measure-bg);
 }
 
 .banjo-tab-measure[data-dragging="true"] {
-  border-color: rgba(47, 111, 115, 0.6);
-  box-shadow: 0 0 0 4px rgba(47, 111, 115, 0.12);
+  border-color: var(--tab-measure-active-border);
+  box-shadow: 0 0 0 4px var(--tab-drag-ring);
 }
 
 .banjo-tab-measure-header {
@@ -136,8 +188,8 @@
 }
 
 .banjo-tab-measure-handle:hover {
-  border-color: rgba(47, 111, 115, 0.22);
-  background: rgba(47, 111, 115, 0.08);
+  border-color: var(--tab-measure-handle-border);
+  background: var(--tab-hover-bg);
 }
 
 .banjo-tab-measure-handle:focus-visible {
@@ -192,24 +244,24 @@
   min-height: 44px;
   padding: 0;
   border: 0;
-  border-left: 1px solid rgba(52, 49, 44, 0.1);
+  border-left: 1px solid var(--tab-slot-border);
   border-radius: 0;
   background: transparent;
   cursor: pointer;
 }
 
 .banjo-tab-slot-button:last-child {
-  border-right: 1px solid rgba(52, 49, 44, 0.1);
+  border-right: 1px solid var(--tab-slot-border);
 }
 
 .banjo-tab-slot-button:hover {
-  background: rgba(47, 111, 115, 0.08);
+  background: var(--tab-hover-bg);
 }
 
 .banjo-tab-slot-button:focus-visible {
   outline: 2px solid var(--tab-focus);
   outline-offset: -2px;
-  background: rgba(199, 102, 47, 0.12);
+  background: var(--tab-focus-bg);
 }
 
 .banjo-tab-note {
@@ -224,7 +276,7 @@
   border: 1px solid var(--tab-line);
   border-radius: 999px;
   color: var(--tab-ink);
-  background: var(--tab-paper);
+  background: var(--tab-note-bg);
   font-size: 0.94rem;
   font-weight: 750;
   line-height: 1;
@@ -239,13 +291,13 @@
 .banjo-tab-note:hover,
 .banjo-tab-note:focus-visible {
   border-color: var(--tab-accent);
-  box-shadow: 0 0 0 3px rgba(47, 111, 115, 0.18);
+  box-shadow: 0 0 0 3px var(--tab-drag-ring);
   outline: none;
 }
 
 .banjo-tab-note[data-dragging="true"] {
   opacity: 0.52;
-  box-shadow: 0 0 0 4px rgba(47, 111, 115, 0.18);
+  box-shadow: 0 0 0 4px var(--tab-drag-ring);
 }
 
 .banjo-tab-slot-highlight {
@@ -255,9 +307,9 @@
   display: block;
   width: max(34px, calc(100% / 16 - 4px));
   height: 38px;
-  border: 2px solid rgba(47, 111, 115, 0.65);
+  border: 2px solid var(--tab-highlight-border);
   border-radius: 8px;
-  background: rgba(47, 111, 115, 0.12);
+  background: var(--tab-highlight-bg);
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
@@ -267,12 +319,10 @@
   z-index: 20;
   width: min(var(--fret-picker-max-width, 316px), calc(100vw - (var(--fret-picker-margin, 16px) * 2)));
   padding: 12px;
-  border: 1px solid rgba(47, 111, 115, 0.28);
+  border: 1px solid var(--tab-popover-border);
   border-radius: 8px;
-  background: #fffaf0;
-  box-shadow:
-    0 18px 42px rgba(43, 34, 24, 0.22),
-    0 3px 10px rgba(43, 34, 24, 0.1);
+  background: var(--tab-fret-bg);
+  box-shadow: var(--tab-popover-shadow);
   transform: translate(-50%, 0);
 }
 
@@ -297,7 +347,7 @@
   border: 1px solid var(--tab-border);
   border-radius: 999px;
   color: var(--tab-muted);
-  background: #ffffff;
+  background: var(--tab-fret-option-bg);
   cursor: pointer;
   font: inherit;
   font-weight: 800;
@@ -317,7 +367,7 @@
   border: 1px solid var(--tab-border);
   border-radius: 7px;
   color: var(--tab-ink);
-  background: #ffffff;
+  background: var(--tab-fret-option-bg);
   cursor: pointer;
   font: inherit;
   font-size: 0.95rem;
@@ -326,7 +376,7 @@
 
 .banjo-tab-fret-option:hover {
   border-color: var(--tab-accent);
-  background: rgba(47, 111, 115, 0.08);
+  background: var(--tab-hover-bg);
 }
 
 .banjo-tab-fret-option[aria-pressed="true"] {
@@ -353,20 +403,20 @@
   width: min(420px, calc(100vw - 32px));
   min-height: 76px;
   padding: 14px 18px;
-  border: 2px dashed rgba(110, 56, 41, 0.46);
+  border: 2px dashed var(--tab-trash-border);
   border-radius: 8px;
-  color: #593328;
-  background: rgba(255, 247, 237, 0.96);
-  box-shadow: 0 18px 38px rgba(43, 34, 24, 0.18);
+  color: var(--tab-trash-ink);
+  background: var(--tab-trash-bg);
+  box-shadow: var(--tab-floating-shadow);
   transform: translateX(50%);
   box-sizing: border-box;
   pointer-events: none;
 }
 
 .banjo-tab-trash-zone[data-over-trash="true"] {
-  border-color: #a43d28;
+  border-color: var(--tab-danger);
   color: #ffffff;
-  background: #a43d28;
+  background: var(--tab-danger);
 }
 
 .banjo-tab-trash-icon {
@@ -376,7 +426,7 @@
   height: 32px;
   border-radius: 999px;
   color: inherit;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--tab-trash-icon-bg);
   font-size: 0.78rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -399,7 +449,7 @@
   line-height: 1;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  box-shadow: 0 10px 22px rgba(43, 34, 24, 0.24);
+  box-shadow: var(--tab-preview-shadow);
   box-sizing: border-box;
 }
 
@@ -421,7 +471,7 @@
   text-transform: uppercase;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  box-shadow: 0 12px 26px rgba(43, 34, 24, 0.24);
+  box-shadow: var(--tab-preview-shadow);
   box-sizing: border-box;
 }
 

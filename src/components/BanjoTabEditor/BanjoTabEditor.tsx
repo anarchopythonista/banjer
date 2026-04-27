@@ -1,5 +1,6 @@
 import { useReducer } from "react";
 import { AddMeasureButton } from "./components/AddMeasureButton";
+import { EditableDocumentTitle } from "./components/EditableDocumentTitle";
 import { FretPickerPopover } from "./components/FretPickerPopover";
 import { TabStaff } from "./components/TabStaff";
 import { TrashDropZone } from "./components/TrashDropZone";
@@ -7,7 +8,13 @@ import "./BanjoTabEditor.css";
 import { usePointerMeasureDrag } from "./hooks/usePointerMeasureDrag";
 import { usePointerNoteDrag } from "./hooks/usePointerNoteDrag";
 import { banjoTabReducer, createInitialEditorState } from "./tabReducer";
-import type { BanjoTabEditorState, NoteLocation, ScreenPoint, TabNoteData } from "./types";
+import type {
+  BanjoTabEditorState,
+  EditorMode,
+  NoteLocation,
+  ScreenPoint,
+  TabNoteData,
+} from "./types";
 
 type BanjoTabEditorProps = {
   initialState?: BanjoTabEditorState;
@@ -20,18 +27,12 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
   );
   const dragApi = usePointerNoteDrag({ state, dispatch });
   const measureDragApi = usePointerMeasureDrag({ state, dispatch });
-  const currentPickerNote =
-    state.mode.type === "fret-picker" && state.mode.noteId
-      ? state.tab.measures
-          .flatMap((measure) => measure.notes)
-          .find((note) => note.id === state.mode.noteId)
-      : undefined;
-  const draggedNote =
-    state.mode.type === "dragging-note"
-      ? state.tab.measures
-          .flatMap((measure) => measure.notes)
-          .find((note) => note.id === state.mode.noteId)
-      : undefined;
+  const notes = state.tab.measures.flatMap((measure) => measure.notes);
+  const currentPickerNoteId = state.mode.type === "fret-picker" ? state.mode.noteId : undefined;
+  const draggedNoteId = state.mode.type === "dragging-note" ? state.mode.noteId : undefined;
+  const currentPickerNote = findNoteById(notes, currentPickerNoteId);
+  const draggedNote = findNoteById(notes, draggedNoteId);
+  const trashDropZoneState = getTrashDropZoneState(state.mode);
 
   const openFretPicker = (
     location: NoteLocation,
@@ -87,10 +88,7 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
   return (
     <main className="banjo-tab-editor" aria-labelledby="banjo-tab-editor-title">
       <header className="banjo-tab-editor-header">
-        <div>
-          <h1 id="banjo-tab-editor-title">Banjo Tab Editor</h1>
-          <p>5-string open-G tablature, 16 slots per measure.</p>
-        </div>
+        <EditableDocumentTitle />
         <AddMeasureButton onAddMeasure={() => dispatch({ type: "ADD_MEASURE" })} />
       </header>
       <TabStaff
@@ -108,12 +106,9 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
         onClose={closeFretPicker}
       />
       <TrashDropZone
-        isActive={state.mode.type === "dragging-note" || state.mode.type === "dragging-measure"}
-        isOverTrash={
-          (state.mode.type === "dragging-note" || state.mode.type === "dragging-measure") &&
-          state.mode.overTrash
-        }
-        label={state.mode.type === "dragging-measure" ? "Drop measure to delete" : "Drop note to delete"}
+        isActive={trashDropZoneState.isActive}
+        isOverTrash={trashDropZoneState.isOverTrash}
+        label={trashDropZoneState.label}
         onRegister={(element) => {
           dragApi.registerTrashZone(element);
           measureDragApi.registerTrashZone(element);
@@ -139,4 +134,32 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
       )}
     </main>
   );
+}
+
+function findNoteById(notes: TabNoteData[], noteId?: string) {
+  return noteId ? notes.find((note) => note.id === noteId) : undefined;
+}
+
+function getTrashDropZoneState(mode: EditorMode) {
+  switch (mode.type) {
+    case "dragging-measure":
+      return {
+        isActive: true,
+        isOverTrash: mode.overTrash,
+        label: "Drop measure to delete",
+      };
+    case "dragging-note":
+      return {
+        isActive: true,
+        isOverTrash: mode.overTrash,
+        label: "Drop note to delete",
+      };
+    case "fret-picker":
+    case "idle":
+      return {
+        isActive: false,
+        isOverTrash: false,
+        label: "Drop note to delete",
+      };
+  }
 }

@@ -1,4 +1,4 @@
-import { createInitialTab, createMeasure, createNoteId } from "./constants";
+import { createInitialTab, createMeasureWithId, createNoteId } from "./constants";
 import type {
   BanjoTabEditorState,
   EditorMode,
@@ -33,7 +33,7 @@ export function banjoTabReducer(
         ...state,
         tab: {
           ...state.tab,
-          measures: [...state.tab.measures, createMeasure()],
+          measures: [...state.tab.measures, createMeasureWithId(getNextMeasureId(state.tab.measures))],
         },
       };
 
@@ -209,4 +209,14 @@ function deleteMeasure(measures: TabMeasureData[], measureId: string): TabMeasur
   }
 
   return measures.filter((measure) => measure.id !== measureId);
+}
+
+function getNextMeasureId(measures: TabMeasureData[]): string {
+  const usedNumbers = measures
+    .map((measure) => /^measure-(\d+)$/.exec(measure.id)?.[1])
+    .filter((value): value is string => Boolean(value))
+    .map(Number);
+  const nextNumber = usedNumbers.length > 0 ? Math.max(...usedNumbers) + 1 : measures.length + 1;
+
+  return `measure-${nextNumber}`;
 }

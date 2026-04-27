@@ -1,7 +1,7 @@
-import { BanjoTabEditor } from "./components/BanjoTabEditor/BanjoTabEditor";
+import { AppShell } from "./components/AppShell/AppShell";
 
 function App() {
-  return <BanjoTabEditor />;
+  return <AppShell />;
 }
 
 export default App;

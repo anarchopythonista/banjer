@@ -24,6 +24,20 @@ export const EmptyEditor: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByLabelText("Add measure")).toBeInTheDocument();
     await expect(canvas.getByLabelText("Measure 1")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Edit title: Untitled" })).toBeInTheDocument();
+  },
+};
+
+export const RenameTitleInteraction: Story = {
+  args: {
+    initialState: makeEditorState([{ id: "measure-1", notes: [] }]),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Edit title: Untitled" }));
+    const titleInput = canvas.getByLabelText("Edit title");
+    await userEvent.clear(titleInput);
+    await userEvent.type(titleInput, "Foggy Mountain{Enter}");
+    await expect(canvas.getByRole("button", { name: "Edit title: Foggy Mountain" })).toBeInTheDocument();
   },
 };
 

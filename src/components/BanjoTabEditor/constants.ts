@@ -20,6 +20,10 @@ export function createMeasure(): TabMeasureData {
   const id = `measure-${nextMeasureNumber}`;
   nextMeasureNumber += 1;
 
+  return createMeasureWithId(id);
+}
+
+export function createMeasureWithId(id: string): TabMeasureData {
   return {
     id,
     beats: DEFAULT_BEATS_PER_MEASURE,
