@@ -66,6 +66,36 @@ describe("documentReducer", () => {
     expect(state.storageError).toBeNull();
   });
 
+  it("updates the active document tab from tab editor changes", () => {
+    const state = createDraftDocumentState();
+    const nextTab = {
+      ...state.activeDocument.tab,
+      measures: [
+        {
+          ...state.activeDocument.tab.measures[0],
+          notes: [{ id: "note-1", stringIndex: 0, position: 4, fret: 2 }],
+        },
+      ],
+    };
+
+    const nextState = documentReducer(state, { type: "TAB_CHANGED", tab: nextTab });
+
+    expect(nextState.activeDocument.tab).toBe(nextTab);
+  });
+
+  it("stores storage errors without losing the active document", () => {
+    const state = createDraftDocumentState();
+
+    const nextState = documentReducer(state, {
+      type: "STORAGE_FAILED",
+      message: "IndexedDB unavailable",
+    });
+
+    expect(nextState.activeDocument).toEqual(state.activeDocument);
+    expect(nextState.storageStatus).toBe("error");
+    expect(nextState.storageError).toBe("IndexedDB unavailable");
+  });
+
   it("updates the active saved document after persistence succeeds", () => {
     const savedDocument = document("doc-1", "Cripple Creek");
     const summary: SavedTabSummary = {
