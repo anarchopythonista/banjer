@@ -18,9 +18,10 @@ import type {
   BanjoTabDocument,
   BanjoTabDocumentState,
   BanjoTabEditorState,
+  EditableBanjoTabDocument,
   EditorMode,
+  SavedTabSummary,
 } from "../types";
-import type { BanjoTabDocumentAction } from "../documentReducer";
 import type { BanjoTabAction } from "../tabReducer";
 
 type UseBanjoTabDocumentsResult = {
@@ -33,123 +34,154 @@ type UseBanjoTabDocumentsResult = {
   shouldConfirmDiscard: boolean;
 };
 
-type LocalEditorAction =
-  | { type: "EDITOR_STATE_REPLACED"; state: BanjoTabEditorState }
-  | { type: "EDITOR_TAB_REPLACED"; tab: BanjoTab; mode?: EditorMode };
-
-type LocalDocumentAction = {
-  type: "DOCUMENT_STATE_REPLACED";
-  state: BanjoTabDocumentState;
+type SaveRequest = {
+  token: number;
+  documentRevision: number;
 };
+
+type DocumentSessionState = {
+  documentState: BanjoTabDocumentState;
+  editorState: BanjoTabEditorState;
+  documentRevision: number;
+  latestSaveToken: number;
+};
+
+type DocumentSessionAction =
+  | { type: "DOCUMENTS_LOADING" }
+  | {
+      type: "STARTUP_DOCUMENTS_INITIALIZED";
+      expectedDocumentRevision: number;
+      document: EditableBanjoTabDocument;
+      savedTabs: SavedTabSummary[];
+      mode?: EditorMode;
+    }
+  | { type: "TITLE_SAVE_STARTED"; document: BanjoTabDocument; token: number }
+  | { type: "TAB_CHANGED"; tab: BanjoTab }
+  | { type: "TAB_SAVE_STARTED"; tab: BanjoTab; token: number }
+  | {
+      type: "SAVE_SUCCEEDED";
+      request: SaveRequest;
+      document: BanjoTabDocument;
+      savedTabs: SavedTabSummary[];
+    }
+  | { type: "SAVE_FAILED"; request: SaveRequest; message: string }
+  | { type: "DOCUMENT_LOADED"; document: BanjoTabDocument }
+  | { type: "SAVED_TABS_LOADED"; savedTabs: SavedTabSummary[] }
+  | { type: "NEW_DRAFT_STARTED" }
+  | { type: "EDITOR_STATE_REPLACED"; state: BanjoTabEditorState }
+  | { type: "STORAGE_FAILED"; message: string };
 
 export function useBanjoTabDocuments(
   initialState?: BanjoTabEditorState,
 ): UseBanjoTabDocumentsResult {
-  const initialEditorStateRef = useRef<BanjoTabEditorState | null>(null);
-
-  if (initialEditorStateRef.current === null) {
-    initialEditorStateRef.current = initialState ?? createInitialEditorState();
-  }
-
-  const [documentState, baseDispatchDocument] = useReducer(
-    localDocumentReducer,
-    initialEditorStateRef.current.tab,
-    createInitialDocumentState,
+  const [sessionState, baseDispatchSession] = useReducer(
+    documentSessionReducer,
+    initialState,
+    createDocumentSessionState,
   );
-  const [editorState, baseDispatchEditor] = useReducer(
-    localEditorReducer,
-    initialEditorStateRef.current,
-  );
-  const documentStateRef = useRef(documentState);
-  const editorStateRef = useRef(editorState);
+  const sessionStateRef = useRef(sessionState);
+  const nextSaveTokenRef = useRef(0);
 
-  documentStateRef.current = documentState;
-  editorStateRef.current = editorState;
+  useEffect(() => {
+    sessionStateRef.current = sessionState;
+  }, [sessionState]);
 
-  const dispatchDocumentAction = useCallback((action: BanjoTabDocumentAction) => {
-    const nextDocumentState = documentReducer(documentStateRef.current, action);
-    documentStateRef.current = nextDocumentState;
-    baseDispatchDocument({
-      type: "DOCUMENT_STATE_REPLACED",
-      state: nextDocumentState,
-    });
+  const dispatchSessionAction = useCallback((action: DocumentSessionAction) => {
+    const nextState = documentSessionReducer(sessionStateRef.current, action);
+    sessionStateRef.current = nextState;
+    baseDispatchSession(action);
+    return nextState;
   }, []);
-
-  const replaceEditorTab = useCallback((tab: BanjoTab, mode?: EditorMode) => {
-    const action: LocalEditorAction = { type: "EDITOR_TAB_REPLACED", tab, mode };
-    editorStateRef.current = localEditorReducer(editorStateRef.current, action);
-    baseDispatchEditor(action);
-  }, []);
+  const getSessionState = useCallback(() => sessionStateRef.current, []);
 
   const persistDocument = useCallback(
-    async (document: BanjoTabDocument, fallbackMessage: string) => {
+    async (
+      document: BanjoTabDocument,
+      request: SaveRequest,
+      fallbackMessage: string,
+    ) => {
       try {
         const savedDocument = await saveTab(document);
         const savedTabs = await listSavedTabs();
-        dispatchDocumentAction({
-          type: "DOCUMENT_PERSISTED",
+        dispatchSessionAction({
+          type: "SAVE_SUCCEEDED",
+          request,
           document: savedDocument,
           savedTabs,
         });
       } catch (error) {
-        dispatchDocumentAction({
-          type: "STORAGE_FAILED",
+        dispatchSessionAction({
+          type: "SAVE_FAILED",
+          request,
           message: getStorageErrorMessage(error, fallbackMessage),
         });
       }
     },
-    [dispatchDocumentAction],
+    [dispatchSessionAction],
   );
 
   const commitTitle = useCallback(
     async (title: string) => {
-      const activeDocument = documentStateRef.current.activeDocument;
+      const activeDocument = sessionStateRef.current.documentState.activeDocument;
       const normalizedTitle = normalizeDocumentTitle(title);
       const now = new Date().toISOString();
+      const token = getNextSaveToken(nextSaveTokenRef);
       const documentToSave: BanjoTabDocument =
         activeDocument.id === null
           ? {
               id: crypto.randomUUID(),
               title: normalizedTitle,
-              tab: editorStateRef.current.tab,
+              tab: sessionStateRef.current.editorState.tab,
               createdAt: now,
               updatedAt: now,
             }
           : {
               ...activeDocument,
               title: normalizedTitle,
-              tab: editorStateRef.current.tab,
+              tab: sessionStateRef.current.editorState.tab,
               updatedAt: now,
             };
 
-      dispatchDocumentAction({ type: "TITLE_COMMITTED", title });
-      await persistDocument(documentToSave, "Unable to save tab title");
+      const nextState = dispatchSessionAction({
+        type: "TITLE_SAVE_STARTED",
+        document: documentToSave,
+        token,
+      });
+      await persistDocument(
+        documentToSave,
+        { token, documentRevision: nextState.documentRevision },
+        "Unable to save tab title",
+      );
     },
-    [dispatchDocumentAction, persistDocument],
+    [dispatchSessionAction, persistDocument],
   );
 
   const dispatchTabAction = useCallback(
     (action: BanjoTabAction) => {
-      const previousEditorState = editorStateRef.current;
+      const previousEditorState = sessionStateRef.current.editorState;
       const nextEditorState = banjoTabReducer(previousEditorState, action);
-      const editorAction: LocalEditorAction = {
-        type: "EDITOR_STATE_REPLACED",
-        state: nextEditorState,
-      };
-
-      editorStateRef.current = nextEditorState;
-      baseDispatchEditor(editorAction);
 
       if (nextEditorState.tab === previousEditorState.tab) {
+        dispatchSessionAction({
+          type: "EDITOR_STATE_REPLACED",
+          state: nextEditorState,
+        });
         return;
       }
 
-      const activeDocument = documentStateRef.current.activeDocument;
-      dispatchDocumentAction({ type: "TAB_CHANGED", tab: nextEditorState.tab });
+      const activeDocument = sessionStateRef.current.documentState.activeDocument;
 
       if (activeDocument.id === null) {
+        dispatchSessionAction({ type: "TAB_CHANGED", tab: nextEditorState.tab });
         return;
       }
+
+      const token = getNextSaveToken(nextSaveTokenRef);
+      const nextState = dispatchSessionAction({
+        type: "TAB_SAVE_STARTED",
+        tab: nextEditorState.tab,
+        token,
+      });
 
       void persistDocument(
         {
@@ -157,21 +189,22 @@ export function useBanjoTabDocuments(
           tab: nextEditorState.tab,
           updatedAt: new Date().toISOString(),
         },
+        { token, documentRevision: nextState.documentRevision },
         "Unable to autosave tab changes",
       );
     },
-    [dispatchDocumentAction, persistDocument],
+    [dispatchSessionAction, persistDocument],
   );
 
   const loadDocument = useCallback(
     async (id: string) => {
-      dispatchDocumentAction({ type: "DOCUMENTS_LOADING" });
+      dispatchSessionAction({ type: "DOCUMENTS_LOADING" });
 
       try {
         const document = await getSavedTab(id);
 
         if (!document) {
-          dispatchDocumentAction({
+          dispatchSessionAction({
             type: "STORAGE_FAILED",
             message: "Saved tab not found",
           });
@@ -181,62 +214,214 @@ export function useBanjoTabDocuments(
         await markOpened(id);
         const savedTabs = await listSavedTabs();
 
-        dispatchDocumentAction({ type: "DOCUMENT_LOADED", document });
-        dispatchDocumentAction({ type: "SAVED_TABS_LOADED", savedTabs });
-        replaceEditorTab(document.tab, { type: "idle" });
+        dispatchSessionAction({ type: "DOCUMENT_LOADED", document });
+        dispatchSessionAction({ type: "SAVED_TABS_LOADED", savedTabs });
       } catch (error) {
-        dispatchDocumentAction({
+        dispatchSessionAction({
           type: "STORAGE_FAILED",
           message: getStorageErrorMessage(error, "Unable to load saved tab"),
         });
       }
     },
-    [dispatchDocumentAction, replaceEditorTab],
+    [dispatchSessionAction],
   );
 
   const startNewDraft = useCallback(() => {
-    dispatchDocumentAction({ type: "NEW_DRAFT_STARTED" });
-    replaceEditorTab(documentStateRef.current.activeDocument.tab, { type: "idle" });
-  }, [dispatchDocumentAction, replaceEditorTab]);
+    dispatchSessionAction({ type: "NEW_DRAFT_STARTED" });
+  }, [dispatchSessionAction]);
 
   useMountDocuments({
-    dispatchDocumentAction,
-    initialTab: initialEditorStateRef.current.tab,
-    replaceEditorTab,
+    dispatchSessionAction,
+    getSessionState,
   });
 
   return {
-    documentState,
-    editorState,
+    documentState: sessionState.documentState,
+    editorState: sessionState.editorState,
     commitTitle,
     dispatchTabAction,
     loadDocument,
     startNewDraft,
-    shouldConfirmDiscard: isUnsavedMeaningfulDraft(documentState.activeDocument),
+    shouldConfirmDiscard: isUnsavedMeaningfulDraft(
+      sessionState.documentState.activeDocument,
+    ),
   };
 }
 
-function localEditorReducer(
-  state: BanjoTabEditorState,
-  action: LocalEditorAction,
-): BanjoTabEditorState {
+export function createDocumentSessionState(
+  initialState?: BanjoTabEditorState,
+): DocumentSessionState {
+  const editorState = initialState ?? createInitialEditorState();
+
+  return {
+    documentState: createInitialDocumentState(editorState.tab),
+    editorState,
+    documentRevision: 0,
+    latestSaveToken: 0,
+  };
+}
+
+export function documentSessionReducer(
+  state: DocumentSessionState,
+  action: DocumentSessionAction,
+): DocumentSessionState {
   switch (action.type) {
-    case "EDITOR_STATE_REPLACED":
-      return action.state;
-    case "EDITOR_TAB_REPLACED":
+    case "DOCUMENTS_LOADING":
       return {
         ...state,
-        tab: action.tab,
-        mode: action.mode ?? state.mode,
+        documentState: documentReducer(state.documentState, {
+          type: "DOCUMENTS_LOADING",
+        }),
+      };
+
+    case "STARTUP_DOCUMENTS_INITIALIZED":
+      if (state.documentRevision !== action.expectedDocumentRevision) {
+        return state;
+      }
+
+      return {
+        ...state,
+        documentState: documentReducer(state.documentState, {
+          type: "DOCUMENTS_INITIALIZED",
+          document: action.document,
+          savedTabs: action.savedTabs,
+        }),
+        editorState: replaceEditorTab(state.editorState, action.document.tab, action.mode),
+        documentRevision: 0,
+      };
+
+    case "TITLE_SAVE_STARTED":
+      return {
+        ...state,
+        documentState: {
+          ...state.documentState,
+          activeDocument: action.document,
+          storageStatus: "saving",
+          storageError: null,
+        },
+        documentRevision: state.documentRevision + 1,
+        latestSaveToken: action.token,
+      };
+
+    case "TAB_CHANGED":
+      return applyTabChange(state, action.tab);
+
+    case "TAB_SAVE_STARTED":
+      return {
+        ...applyTabChange(state, action.tab),
+        latestSaveToken: action.token,
+      };
+
+    case "SAVE_SUCCEEDED":
+      if (action.request.token !== state.latestSaveToken) {
+        return state;
+      }
+
+      if (action.request.documentRevision !== state.documentRevision) {
+        return {
+          ...state,
+          documentState: {
+            ...state.documentState,
+            storageStatus: "idle",
+          },
+        };
+      }
+
+      return {
+        ...state,
+        documentState: documentReducer(state.documentState, {
+          type: "DOCUMENT_PERSISTED",
+          document: action.document,
+          savedTabs: action.savedTabs,
+        }),
+      };
+
+    case "SAVE_FAILED":
+      if (
+        action.request.token !== state.latestSaveToken ||
+        action.request.documentRevision !== state.documentRevision
+      ) {
+        return state;
+      }
+
+      return {
+        ...state,
+        documentState: documentReducer(state.documentState, {
+          type: "STORAGE_FAILED",
+          message: action.message,
+        }),
+      };
+
+    case "DOCUMENT_LOADED":
+      return {
+        ...state,
+        documentState: documentReducer(state.documentState, {
+          type: "DOCUMENT_LOADED",
+          document: action.document,
+        }),
+        editorState: replaceEditorTab(state.editorState, action.document.tab, {
+          type: "idle",
+        }),
+        documentRevision: 0,
+      };
+
+    case "SAVED_TABS_LOADED":
+      return {
+        ...state,
+        documentState: documentReducer(state.documentState, {
+          type: "SAVED_TABS_LOADED",
+          savedTabs: action.savedTabs,
+        }),
+      };
+
+    case "NEW_DRAFT_STARTED": {
+      const draftDocument = createDraftDocument();
+
+      return {
+        ...state,
+        documentState: {
+          ...state.documentState,
+          activeDocument: draftDocument,
+          storageStatus: "idle",
+          storageError: null,
+        },
+        editorState: replaceEditorTab(state.editorState, draftDocument.tab, {
+          type: "idle",
+        }),
+        documentRevision: 0,
+      };
+    }
+
+    case "EDITOR_STATE_REPLACED":
+      return {
+        ...state,
+        editorState: action.state,
+      };
+
+    case "STORAGE_FAILED":
+      return {
+        ...state,
+        documentState: documentReducer(state.documentState, {
+          type: "STORAGE_FAILED",
+          message: action.message,
+        }),
       };
   }
 }
 
-function localDocumentReducer(
-  _state: BanjoTabDocumentState,
-  action: LocalDocumentAction,
-): BanjoTabDocumentState {
-  return action.state;
+function applyTabChange(
+  state: DocumentSessionState,
+  tab: BanjoTab,
+): DocumentSessionState {
+  return {
+    ...state,
+    documentState: documentReducer(state.documentState, {
+      type: "TAB_CHANGED",
+      tab,
+    }),
+    editorState: replaceEditorTab(state.editorState, tab),
+    documentRevision: state.documentRevision + 1,
+  };
 }
 
 function createInitialDocumentState(initialTab: BanjoTab) {
@@ -258,43 +443,64 @@ function createDraftDocumentWithTab(tab: BanjoTab) {
   };
 }
 
+function replaceEditorTab(
+  state: BanjoTabEditorState,
+  tab: BanjoTab,
+  mode?: EditorMode,
+): BanjoTabEditorState {
+  return {
+    ...state,
+    tab,
+    mode: mode ?? state.mode,
+  };
+}
+
+function getNextSaveToken(ref: { current: number }): number {
+  ref.current += 1;
+  return ref.current;
+}
+
 function useMountDocuments({
-  dispatchDocumentAction,
-  initialTab,
-  replaceEditorTab,
+  dispatchSessionAction,
+  getSessionState,
 }: {
-  dispatchDocumentAction: (action: BanjoTabDocumentAction) => void;
-  initialTab: BanjoTab;
-  replaceEditorTab: (tab: BanjoTab, mode?: EditorMode) => void;
+  dispatchSessionAction: (action: DocumentSessionAction) => DocumentSessionState;
+  getSessionState: () => DocumentSessionState;
 }) {
   useEffect(() => {
     let isActive = true;
+    const expectedDocumentRevision = getSessionState().documentRevision;
+    const initialTab = getSessionState().editorState.tab;
 
-    dispatchDocumentAction({ type: "DOCUMENTS_LOADING" });
+    dispatchSessionAction({ type: "DOCUMENTS_LOADING" });
 
     void Promise.all([listSavedTabs(), getMostRecentTab()])
       .then(([savedTabs, mostRecentDocument]) => {
-        if (!isActive) {
+        if (
+          !isActive ||
+          getSessionState().documentRevision !== expectedDocumentRevision
+        ) {
           return;
         }
 
         const document = mostRecentDocument ?? createDraftDocumentWithTab(initialTab);
-        dispatchDocumentAction({
-          type: "DOCUMENTS_INITIALIZED",
+        dispatchSessionAction({
+          type: "STARTUP_DOCUMENTS_INITIALIZED",
+          expectedDocumentRevision,
           document,
           savedTabs,
+          mode: mostRecentDocument ? { type: "idle" } : undefined,
         });
-        replaceEditorTab(
-          document.tab,
-          mostRecentDocument ? { type: "idle" } : undefined,
-        );
       })
       .catch((error) => {
-        if (!isActive) {
+        if (
+          !isActive ||
+          getSessionState().documentRevision !== expectedDocumentRevision
+        ) {
           return;
         }
 
-        dispatchDocumentAction({
+        dispatchSessionAction({
           type: "STORAGE_FAILED",
           message: getStorageErrorMessage(error, "Unable to load saved tabs"),
         });
@@ -303,7 +509,7 @@ function useMountDocuments({
     return () => {
       isActive = false;
     };
-  }, [dispatchDocumentAction, initialTab, replaceEditorTab]);
+  }, [dispatchSessionAction, getSessionState]);
 }
 
 function getStorageErrorMessage(error: unknown, fallbackMessage: string): string {
