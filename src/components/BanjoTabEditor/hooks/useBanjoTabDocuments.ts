@@ -388,7 +388,7 @@ export function documentSessionReducer(
         editorState: replaceEditorTab(state.editorState, draftDocument.tab, {
           type: "idle",
         }),
-        documentRevision: 0,
+        documentRevision: state.documentRevision + 1,
       };
     }
 

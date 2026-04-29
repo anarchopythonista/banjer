@@ -100,6 +100,34 @@ describe("useBanjoTabDocuments session state", () => {
     expect(nextState.editorState.tab).toBe(editedTab);
     expect(nextState.documentState.activeDocument.id).toBeNull();
   });
+
+  it("does not apply startup documents after a new draft starts during loading", () => {
+    const initialTab = tabWithNote(createInitialTab(), "note-old", 2);
+    const loadedDocument = document("doc-1", "Loaded Tab", initialTab);
+    let state = createDocumentSessionState({
+      tab: initialTab,
+      mode: { type: "picking-fret", target: { stringIndex: 1, position: 8 } },
+    });
+
+    state = documentSessionReducer(state, { type: "DOCUMENTS_LOADING" });
+    state = documentSessionReducer(state, { type: "NEW_DRAFT_STARTED" });
+
+    const freshDraft = state.documentState.activeDocument;
+
+    const nextState = documentSessionReducer(state, {
+      type: "STARTUP_DOCUMENTS_INITIALIZED",
+      expectedDocumentRevision: 0,
+      document: loadedDocument,
+      savedTabs: [summary(loadedDocument)],
+    });
+
+    expect(nextState.documentState.activeDocument).toBe(freshDraft);
+    expect(nextState.documentState.activeDocument.id).toBeNull();
+    expect(nextState.documentState.activeDocument.tab).not.toBe(loadedDocument.tab);
+    expect(nextState.editorState.tab).toBe(freshDraft.tab);
+    expect(nextState.editorState.mode).toEqual({ type: "idle" });
+    expect(nextState.documentState.storageStatus).toBe("idle");
+  });
 });
 
 function tabWithNote(tab: BanjoTab, noteId: string, fret: number): BanjoTab {
