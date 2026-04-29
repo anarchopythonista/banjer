@@ -65,3 +65,41 @@ export type BanjoTabEditorState = {
   tab: BanjoTab;
   mode: EditorMode;
 };
+
+export type BanjoTabDocument = {
+  id: string;
+  title: string;
+  tab: BanjoTab;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type UnsavedBanjoTabDocument = {
+  id: null;
+  title: string;
+  tab: BanjoTab;
+  createdAt: null;
+  updatedAt: null;
+};
+
+export type EditableBanjoTabDocument = BanjoTabDocument | UnsavedBanjoTabDocument;
+
+export type SavedTabSummary = {
+  id: string;
+  title: string;
+  updatedAt: string;
+};
+
+export type SavedTabRecord = BanjoTabDocument & {
+  lastOpenedAt: string;
+  schemaVersion: 1;
+};
+
+export type DocumentStorageStatus = "idle" | "loading" | "saving" | "error";
+
+export type BanjoTabDocumentState = {
+  activeDocument: EditableBanjoTabDocument;
+  savedTabs: SavedTabSummary[];
+  storageStatus: DocumentStorageStatus;
+  storageError: string | null;
+};
