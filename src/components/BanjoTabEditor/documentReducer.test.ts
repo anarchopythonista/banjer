@@ -40,6 +40,32 @@ describe("documentReducer", () => {
     expect(state.storageStatus).toBe("saving");
   });
 
+  it("marks tab changes as saving and clears prior storage errors", () => {
+    const initialState = {
+      ...createDraftDocumentState(),
+      storageStatus: "error" as const,
+      storageError: "Could not save tab",
+    };
+    const changedTab = {
+      ...initialState.activeDocument.tab,
+      measures: [
+        {
+          ...initialState.activeDocument.tab.measures[0],
+          notes: [{ id: "note-1", stringIndex: 0, position: 4, fret: 2 }],
+        },
+      ],
+    };
+
+    const state = documentReducer(initialState, {
+      type: "TAB_CHANGED",
+      tab: changedTab,
+    });
+
+    expect(state.activeDocument.tab).toBe(changedTab);
+    expect(state.storageStatus).toBe("saving");
+    expect(state.storageError).toBeNull();
+  });
+
   it("updates the active saved document after persistence succeeds", () => {
     const savedDocument = document("doc-1", "Cripple Creek");
     const summary: SavedTabSummary = {
@@ -117,8 +143,13 @@ describe("documentReducer", () => {
         ],
       },
     };
+    const draftWithTitle = {
+      ...emptyDraft,
+      title: "Cripple Creek",
+    };
 
     expect(isUnsavedMeaningfulDraft(emptyDraft)).toBe(false);
+    expect(isUnsavedMeaningfulDraft(draftWithTitle)).toBe(true);
     expect(isUnsavedMeaningfulDraft(draftWithNote)).toBe(true);
     expect(isUnsavedMeaningfulDraft(draftWithExtraMeasure)).toBe(true);
   });

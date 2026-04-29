@@ -81,6 +81,8 @@ export function documentReducer(
           ...state.activeDocument,
           tab: action.tab,
         },
+        storageStatus: "saving",
+        storageError: null,
       };
 
     case "DOCUMENT_PERSISTED":
@@ -138,5 +140,8 @@ export function isUnsavedMeaningfulDraft(
     return true;
   }
 
-  return document.tab.measures[0]?.notes.length !== 0;
+  return (
+    document.title !== UNTITLED_DOCUMENT_TITLE ||
+    document.tab.measures[0]?.notes.length !== 0
+  );
 }
