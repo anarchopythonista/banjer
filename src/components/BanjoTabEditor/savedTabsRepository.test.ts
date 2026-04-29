@@ -8,7 +8,7 @@ import {
   toSavedTabRecord,
   toSavedTabSummary,
 } from "./savedTabsRepository";
-import type { BanjoTabDocument, SavedTabRecord, SavedTabSummary } from "./types";
+import type { BanjoTabDocument, SavedTabSummary } from "./types";
 
 describe("savedTabsRepository helpers", () => {
   it("converts documents to versioned IndexedDB records", () => {
@@ -203,7 +203,7 @@ function createTransaction(
     },
     objectStore: vi.fn(() => ({
       getAll: vi.fn(() => request),
-      put: vi.fn((_record: SavedTabRecord) => request),
+      put: vi.fn(() => request),
     })),
   };
 
