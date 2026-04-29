@@ -10,51 +10,61 @@ const TAB_STORE_NAME = "tabs";
 
 export async function listSavedTabs(): Promise<SavedTabSummary[]> {
   const database = await openSavedTabsDatabase();
-  const records = await getAllRecords(database);
-  database.close();
-  return sortSavedTabSummaries(
-    records.map((record) => toSavedTabSummary(fromSavedTabRecord(record))),
-  );
+  try {
+    const records = await getAllRecords(database);
+    return sortSavedTabSummaries(
+      records.map((record) => toSavedTabSummary(fromSavedTabRecord(record))),
+    );
+  } finally {
+    database.close();
+  }
 }
 
 export async function getMostRecentTab(): Promise<BanjoTabDocument | null> {
   const database = await openSavedTabsDatabase();
-  const records = await getAllRecords(database);
-  database.close();
-  const [mostRecentRecord] = [...records].sort((first, second) =>
-    second.lastOpenedAt.localeCompare(first.lastOpenedAt),
-  );
-  return mostRecentRecord ? fromSavedTabRecord(mostRecentRecord) : null;
+  try {
+    const records = await getAllRecords(database);
+    const [mostRecentRecord] = [...records].sort((first, second) =>
+      second.lastOpenedAt.localeCompare(first.lastOpenedAt),
+    );
+    return mostRecentRecord ? fromSavedTabRecord(mostRecentRecord) : null;
+  } finally {
+    database.close();
+  }
 }
 
 export async function getSavedTab(id: string): Promise<BanjoTabDocument | null> {
   const database = await openSavedTabsDatabase();
-  const record = await getRecord(database, id);
-  database.close();
-  return record ? fromSavedTabRecord(record) : null;
+  try {
+    const record = await getRecord(database, id);
+    return record ? fromSavedTabRecord(record) : null;
+  } finally {
+    database.close();
+  }
 }
 
 export async function saveTab(
   document: BanjoTabDocument,
 ): Promise<BanjoTabDocument> {
   const database = await openSavedTabsDatabase();
-  await putRecord(database, toSavedTabRecord(document, new Date().toISOString()));
-  database.close();
-  return document;
+  try {
+    await putRecord(
+      database,
+      toSavedTabRecord(document, new Date().toISOString()),
+    );
+    return document;
+  } finally {
+    database.close();
+  }
 }
 
 export async function markOpened(id: string): Promise<void> {
   const database = await openSavedTabsDatabase();
-  const record = await getRecord(database, id);
-
-  if (record) {
-    await putRecord(database, {
-      ...record,
-      lastOpenedAt: new Date().toISOString(),
-    });
+  try {
+    await markRecordOpened(database, id, new Date().toISOString());
+  } finally {
+    database.close();
   }
-
-  database.close();
 }
 
 export function toSavedTabRecord(
@@ -153,13 +163,42 @@ function putRecord(
   record: SavedTabRecord,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const request = database
-      .transaction(TAB_STORE_NAME, "readwrite")
-      .objectStore(TAB_STORE_NAME)
-      .put(record);
+    const transaction = database.transaction(TAB_STORE_NAME, "readwrite");
+    transaction.objectStore(TAB_STORE_NAME).put(record);
 
-    request.onsuccess = () => resolve();
-    request.onerror = () =>
-      reject(request.error ?? new Error(`Unable to save tab ${record.id}`));
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () =>
+      reject(transaction.error ?? new Error(`Unable to save tab ${record.id}`));
+    transaction.onabort = () =>
+      reject(transaction.error ?? new Error(`Unable to save tab ${record.id}`));
+  });
+}
+
+function markRecordOpened(
+  database: IDBDatabase,
+  id: string,
+  lastOpenedAt: string,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(TAB_STORE_NAME, "readwrite");
+    const store = transaction.objectStore(TAB_STORE_NAME);
+    const request = store.get(id);
+
+    request.onsuccess = () => {
+      const record = request.result as SavedTabRecord | undefined;
+
+      if (record) {
+        store.put({
+          ...record,
+          lastOpenedAt,
+        });
+      }
+    };
+
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () =>
+      reject(transaction.error ?? new Error(`Unable to mark tab ${id} opened`));
+    transaction.onabort = () =>
+      reject(transaction.error ?? new Error(`Unable to mark tab ${id} opened`));
   });
 }
