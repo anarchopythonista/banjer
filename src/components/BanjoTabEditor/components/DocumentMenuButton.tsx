@@ -1,12 +1,28 @@
 import { useEffect, useId, useRef, useState } from "react";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 import type { SavedTabSummary } from "../types";
+
+type DocumentDragApi = {
+  documentPointerHandlers: {
+    onPointerDown: (
+      document: SavedTabSummary,
+      event: ReactPointerEvent<HTMLElement>,
+    ) => void;
+    onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
+    onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
+    onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => void;
+    onLostPointerCapture: (event: ReactPointerEvent<HTMLElement>) => void;
+  };
+  deleteDocumentByKeyboard: (document: SavedTabSummary) => void;
+  shouldSuppressClick: (id: string) => boolean;
+};
 
 type DocumentMenuButtonProps = {
   savedTabs: SavedTabSummary[];
   activeDocumentId: string | null;
   onNewFile: () => void;
   onLoadFile: (id: string) => void;
+  documentDragApi?: DocumentDragApi;
 };
 
 export function DocumentMenuButton({
@@ -14,6 +30,7 @@ export function DocumentMenuButton({
   activeDocumentId,
   onNewFile,
   onLoadFile,
+  documentDragApi,
 }: DocumentMenuButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuId = useId();
@@ -101,7 +118,16 @@ export function DocumentMenuButton({
   };
 
   const handleLoadFile = (id: string) => {
+    if (documentDragApi?.shouldSuppressClick(id)) {
+      return;
+    }
+
     onLoadFile(id);
+    closeMenu({ returnFocus: true });
+  };
+
+  const handleDeleteFile = (document: SavedTabSummary) => {
+    documentDragApi?.deleteDocumentByKeyboard(document);
     closeMenu({ returnFocus: true });
   };
 
@@ -136,16 +162,35 @@ export function DocumentMenuButton({
             New file...
           </button>
           {savedTabs.map((savedTab) => (
-            <button
-              key={savedTab.id}
-              type="button"
-              className="banjo-tab-document-menu-item"
-              role="menuitem"
-              aria-current={savedTab.id === activeDocumentId ? "true" : undefined}
-              onClick={() => handleLoadFile(savedTab.id)}
-            >
-              {savedTab.title}
-            </button>
+            <div key={savedTab.id} className="banjo-tab-document-menu-row" role="none">
+              <button
+                type="button"
+                className="banjo-tab-document-menu-item banjo-tab-document-menu-file"
+                role="menuitem"
+                aria-current={savedTab.id === activeDocumentId ? "true" : undefined}
+                onPointerDown={(event) =>
+                  documentDragApi?.documentPointerHandlers.onPointerDown(savedTab, event)
+                }
+                onPointerMove={documentDragApi?.documentPointerHandlers.onPointerMove}
+                onPointerUp={documentDragApi?.documentPointerHandlers.onPointerUp}
+                onPointerCancel={documentDragApi?.documentPointerHandlers.onPointerCancel}
+                onLostPointerCapture={documentDragApi?.documentPointerHandlers.onLostPointerCapture}
+                onClick={() => handleLoadFile(savedTab.id)}
+              >
+                {savedTab.title}
+              </button>
+              {documentDragApi && (
+                <button
+                  type="button"
+                  className="banjo-tab-document-menu-delete"
+                  role="menuitem"
+                  aria-label={`Delete ${savedTab.title}`}
+                  onClick={() => handleDeleteFile(savedTab)}
+                >
+                  Delete
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -155,6 +200,8 @@ export function DocumentMenuButton({
 
 function getMenuItems(root: HTMLDivElement | null): HTMLButtonElement[] {
   return Array.from(
-    root?.querySelectorAll<HTMLButtonElement>(".banjo-tab-document-menu-item") ?? [],
+    root?.querySelectorAll<HTMLButtonElement>(
+      ".banjo-tab-document-menu-item, .banjo-tab-document-menu-delete",
+    ) ?? [],
   );
 }

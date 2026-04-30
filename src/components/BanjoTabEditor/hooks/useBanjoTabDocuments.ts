@@ -8,6 +8,7 @@ import {
 import {
   getMostRecentTab,
   getSavedTab,
+  deleteSavedTab,
   listSavedTabs,
   markOpened,
   saveTab,
@@ -29,8 +30,13 @@ type UseBanjoTabDocumentsResult = {
   editorState: BanjoTabEditorState;
   commitTitle: (title: string) => Promise<void>;
   dispatchTabAction: (action: BanjoTabAction) => void;
+  undoTabChange: () => void;
+  redoTabChange: () => void;
+  deleteDocument: (id: string) => Promise<void>;
   loadDocument: (id: string) => Promise<void>;
   startNewDraft: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
   shouldConfirmDiscard: boolean;
 };
 
@@ -42,6 +48,10 @@ type SaveRequest = {
 type DocumentSessionState = {
   documentState: BanjoTabDocumentState;
   editorState: BanjoTabEditorState;
+  undoStack: BanjoTab[];
+  redoStack: BanjoTab[];
+  canUndo: boolean;
+  canRedo: boolean;
   documentRevision: number;
   latestSaveToken: number;
 };
@@ -58,6 +68,10 @@ type DocumentSessionAction =
   | { type: "TITLE_SAVE_STARTED"; document: BanjoTabDocument; token: number }
   | { type: "TAB_CHANGED"; tab: BanjoTab }
   | { type: "TAB_SAVE_STARTED"; tab: BanjoTab; token: number }
+  | { type: "UNDO_TAB_CHANGE" }
+  | { type: "REDO_TAB_CHANGE" }
+  | { type: "UNDO_TAB_SAVE_STARTED"; tab: BanjoTab; token: number }
+  | { type: "REDO_TAB_SAVE_STARTED"; tab: BanjoTab; token: number }
   | {
       type: "SAVE_SUCCEEDED";
       request: SaveRequest;
@@ -66,6 +80,13 @@ type DocumentSessionAction =
     }
   | { type: "SAVE_FAILED"; request: SaveRequest; message: string }
   | { type: "DOCUMENT_LOADED"; document: BanjoTabDocument }
+  | { type: "DOCUMENT_DELETE_STARTED" }
+  | {
+      type: "DOCUMENT_DELETE_SUCCEEDED";
+      deletedId: string;
+      nextDocument: EditableBanjoTabDocument;
+      savedTabs: SavedTabSummary[];
+    }
   | { type: "SAVED_TABS_LOADED"; savedTabs: SavedTabSummary[] }
   | { type: "NEW_DRAFT_STARTED" }
   | { type: "EDITOR_STATE_REPLACED"; state: BanjoTabEditorState }
@@ -196,6 +217,84 @@ export function useBanjoTabDocuments(
     [dispatchSessionAction, persistDocument],
   );
 
+  const applyHistoryChange = useCallback(
+    (action: Extract<DocumentSessionAction, { type: "UNDO_TAB_CHANGE" | "REDO_TAB_CHANGE" }>) => {
+      const previousTab = sessionStateRef.current.editorState.tab;
+      const nextState = dispatchSessionAction(action);
+
+      if (nextState.editorState.tab === previousTab) {
+        return;
+      }
+
+      const activeDocument = nextState.documentState.activeDocument;
+
+      if (activeDocument.id === null) {
+        return;
+      }
+
+      const token = getNextSaveToken(nextSaveTokenRef);
+      const saveActionType =
+        action.type === "UNDO_TAB_CHANGE" ? "UNDO_TAB_SAVE_STARTED" : "REDO_TAB_SAVE_STARTED";
+      const savingState = dispatchSessionAction({
+        type: saveActionType,
+        tab: nextState.editorState.tab,
+        token,
+      });
+
+      void persistDocument(
+        {
+          ...activeDocument,
+          tab: savingState.editorState.tab,
+          updatedAt: new Date().toISOString(),
+        },
+        { token, documentRevision: savingState.documentRevision },
+        "Unable to autosave tab changes",
+      );
+    },
+    [dispatchSessionAction, persistDocument],
+  );
+
+  const undoTabChange = useCallback(() => {
+    applyHistoryChange({ type: "UNDO_TAB_CHANGE" });
+  }, [applyHistoryChange]);
+
+  const redoTabChange = useCallback(() => {
+    applyHistoryChange({ type: "REDO_TAB_CHANGE" });
+  }, [applyHistoryChange]);
+
+  const deleteDocument = useCallback(
+    async (id: string) => {
+      const activeDocument = sessionStateRef.current.documentState.activeDocument;
+      dispatchSessionAction({ type: "DOCUMENT_DELETE_STARTED" });
+
+      try {
+        await deleteSavedTab(id);
+        const savedTabs = await listSavedTabs();
+        const nextDocument =
+          activeDocument.id === id
+            ? await getNextDocumentAfterDelete(savedTabs)
+            : activeDocument;
+
+        if (nextDocument.id !== null) {
+          await markOpened(nextDocument.id);
+        }
+
+        dispatchSessionAction({
+          type: "DOCUMENT_DELETE_SUCCEEDED",
+          deletedId: id,
+          nextDocument,
+          savedTabs,
+        });
+      } catch (error) {
+        dispatchSessionAction({
+          type: "STORAGE_FAILED",
+          message: getStorageErrorMessage(error, "Unable to delete saved tab"),
+        });
+      }
+    },
+    [dispatchSessionAction],
+  );
+
   const loadDocument = useCallback(
     async (id: string) => {
       dispatchSessionAction({ type: "DOCUMENTS_LOADING" });
@@ -241,8 +340,13 @@ export function useBanjoTabDocuments(
     editorState: sessionState.editorState,
     commitTitle,
     dispatchTabAction,
+    undoTabChange,
+    redoTabChange,
+    deleteDocument,
     loadDocument,
     startNewDraft,
+    canUndo: sessionState.canUndo,
+    canRedo: sessionState.canRedo,
     shouldConfirmDiscard: isUnsavedMeaningfulDraft(
       sessionState.documentState.activeDocument,
     ),
@@ -257,6 +361,10 @@ export function createDocumentSessionState(
   return {
     documentState: createInitialDocumentState(editorState.tab),
     editorState,
+    undoStack: [],
+    redoStack: [],
+    canUndo: false,
+    canRedo: false,
     documentRevision: 0,
     latestSaveToken: 0,
   };
@@ -288,6 +396,10 @@ export function documentSessionReducer(
           savedTabs: action.savedTabs,
         }),
         editorState: replaceEditorTab(state.editorState, action.document.tab, action.mode),
+        undoStack: [],
+        redoStack: [],
+        canUndo: false,
+        canRedo: false,
         documentRevision: 0,
       };
 
@@ -305,11 +417,24 @@ export function documentSessionReducer(
       };
 
     case "TAB_CHANGED":
-      return applyTabChange(state, action.tab);
+      return applyTabChange(state, action.tab, { addUndoEntry: true });
 
     case "TAB_SAVE_STARTED":
       return {
-        ...applyTabChange(state, action.tab),
+        ...applyTabChange(state, action.tab, { addUndoEntry: true }),
+        latestSaveToken: action.token,
+      };
+
+    case "UNDO_TAB_CHANGE":
+      return undoTabChangeInState(state);
+
+    case "REDO_TAB_CHANGE":
+      return redoTabChangeInState(state);
+
+    case "UNDO_TAB_SAVE_STARTED":
+    case "REDO_TAB_SAVE_STARTED":
+      return {
+        ...applyTabChange(state, action.tab, { addUndoEntry: false }),
         latestSaveToken: action.token,
       };
 
@@ -363,8 +488,47 @@ export function documentSessionReducer(
         editorState: replaceEditorTab(state.editorState, action.document.tab, {
           type: "idle",
         }),
+        undoStack: [],
+        redoStack: [],
+        canUndo: false,
+        canRedo: false,
         documentRevision: 0,
       };
+
+    case "DOCUMENT_DELETE_STARTED":
+      return {
+        ...state,
+        documentState: {
+          ...state.documentState,
+          storageStatus: "loading",
+          storageError: null,
+        },
+      };
+
+    case "DOCUMENT_DELETE_SUCCEEDED": {
+      const deletedActiveDocument = state.documentState.activeDocument.id === action.deletedId;
+
+      return {
+        ...state,
+        documentState: {
+          activeDocument: deletedActiveDocument
+            ? action.nextDocument
+            : state.documentState.activeDocument,
+          savedTabs: action.savedTabs,
+          storageStatus: "idle",
+          storageError: null,
+        },
+        editorState:
+          deletedActiveDocument
+            ? replaceEditorTab(state.editorState, action.nextDocument.tab, { type: "idle" })
+            : state.editorState,
+        undoStack: deletedActiveDocument ? [] : state.undoStack,
+        redoStack: deletedActiveDocument ? [] : state.redoStack,
+        canUndo: deletedActiveDocument ? false : state.canUndo,
+        canRedo: deletedActiveDocument ? false : state.canRedo,
+        documentRevision: deletedActiveDocument ? 0 : state.documentRevision + 1,
+      };
+    }
 
     case "SAVED_TABS_LOADED":
       return {
@@ -389,6 +553,10 @@ export function documentSessionReducer(
         editorState: replaceEditorTab(state.editorState, draftDocument.tab, {
           type: "idle",
         }),
+        undoStack: [],
+        redoStack: [],
+        canUndo: false,
+        canRedo: false,
         documentRevision: state.documentRevision + 1,
       };
     }
@@ -413,7 +581,13 @@ export function documentSessionReducer(
 function applyTabChange(
   state: DocumentSessionState,
   tab: BanjoTab,
+  options: { addUndoEntry: boolean } = { addUndoEntry: false },
 ): DocumentSessionState {
+  const undoStack = options.addUndoEntry
+    ? [...state.undoStack, state.editorState.tab]
+    : state.undoStack;
+  const redoStack = options.addUndoEntry ? [] : state.redoStack;
+
   return {
     ...state,
     documentState: documentReducer(state.documentState, {
@@ -421,6 +595,60 @@ function applyTabChange(
       tab,
     }),
     editorState: replaceEditorTab(state.editorState, tab),
+    undoStack,
+    redoStack,
+    canUndo: undoStack.length > 0,
+    canRedo: redoStack.length > 0,
+    documentRevision: state.documentRevision + 1,
+  };
+}
+
+function undoTabChangeInState(state: DocumentSessionState): DocumentSessionState {
+  const previousTab = state.undoStack.at(-1);
+
+  if (!previousTab) {
+    return state;
+  }
+
+  const undoStack = state.undoStack.slice(0, -1);
+  const redoStack = [...state.redoStack, state.editorState.tab];
+
+  return {
+    ...state,
+    documentState: documentReducer(state.documentState, {
+      type: "TAB_CHANGED",
+      tab: previousTab,
+    }),
+    editorState: replaceEditorTab(state.editorState, previousTab, { type: "idle" }),
+    undoStack,
+    redoStack,
+    canUndo: undoStack.length > 0,
+    canRedo: true,
+    documentRevision: state.documentRevision + 1,
+  };
+}
+
+function redoTabChangeInState(state: DocumentSessionState): DocumentSessionState {
+  const nextTab = state.redoStack.at(-1);
+
+  if (!nextTab) {
+    return state;
+  }
+
+  const undoStack = [...state.undoStack, state.editorState.tab];
+  const redoStack = state.redoStack.slice(0, -1);
+
+  return {
+    ...state,
+    documentState: documentReducer(state.documentState, {
+      type: "TAB_CHANGED",
+      tab: nextTab,
+    }),
+    editorState: replaceEditorTab(state.editorState, nextTab, { type: "idle" }),
+    undoStack,
+    redoStack,
+    canUndo: true,
+    canRedo: redoStack.length > 0,
     documentRevision: state.documentRevision + 1,
   };
 }
@@ -442,6 +670,18 @@ function createDraftDocumentWithTab(tab: BanjoTab) {
     ...createDraftDocument(),
     tab,
   };
+}
+
+async function getNextDocumentAfterDelete(
+  savedTabs: SavedTabSummary[],
+): Promise<EditableBanjoTabDocument> {
+  const [nextSavedTab] = savedTabs;
+
+  if (!nextSavedTab) {
+    return createDraftDocument();
+  }
+
+  return (await getSavedTab(nextSavedTab.id)) ?? createDraftDocument();
 }
 
 function replaceEditorTab(

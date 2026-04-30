@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createInitialTab } from "./constants";
 import {
+  deleteSavedTab,
   fromSavedTabRecord,
   listSavedTabs,
   saveTab,
@@ -115,6 +116,26 @@ describe("savedTabsRepository IndexedDB behavior", () => {
     await expect(result).rejects.toThrow("write aborted");
     expect(database.close).toHaveBeenCalledOnce();
   });
+
+  it("waits for the delete transaction to complete before resolving", async () => {
+    const { database, openRequest, transaction } = stubSavedTabsDatabase();
+    let settled = false;
+
+    const result = deleteSavedTab("doc-1").then(() => {
+      settled = true;
+    });
+
+    openRequest.succeed(database);
+    await flushPromises();
+
+    expect(settled).toBe(false);
+
+    transaction.complete();
+    await result;
+
+    expect(settled).toBe(true);
+    expect(database.close).toHaveBeenCalledOnce();
+  });
 });
 
 function document(id: string, title: string): BanjoTabDocument {
@@ -204,6 +225,7 @@ function createTransaction(
     objectStore: vi.fn(() => ({
       getAll: vi.fn(() => request),
       put: vi.fn(() => request),
+      delete: vi.fn(() => request),
     })),
   };
 

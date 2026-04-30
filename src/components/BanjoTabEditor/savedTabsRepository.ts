@@ -55,6 +55,15 @@ export async function saveTab(
   }
 }
 
+export async function deleteSavedTab(id: string): Promise<void> {
+  const database = await openSavedTabsDatabase();
+  try {
+    await deleteRecord(database, id);
+  } finally {
+    database.close();
+  }
+}
+
 export async function markOpened(id: string): Promise<void> {
   const database = await openSavedTabsDatabase();
   try {
@@ -150,6 +159,19 @@ function putRecord(
       reject(transaction.error ?? new Error(`Unable to save tab ${record.id}`));
     transaction.onabort = () =>
       reject(transaction.error ?? new Error(`Unable to save tab ${record.id}`));
+  });
+}
+
+function deleteRecord(database: IDBDatabase, id: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(TAB_STORE_NAME, "readwrite");
+    transaction.objectStore(TAB_STORE_NAME).delete(id);
+
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () =>
+      reject(transaction.error ?? new Error(`Unable to delete saved tab ${id}`));
+    transaction.onabort = () =>
+      reject(transaction.error ?? new Error(`Unable to delete saved tab ${id}`));
   });
 }
 

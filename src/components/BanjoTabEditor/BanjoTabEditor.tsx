@@ -1,13 +1,15 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { AddMeasureButton } from "./components/AddMeasureButton";
 import { DocumentMenuButton } from "./components/DocumentMenuButton";
 import { EditableDocumentTitle } from "./components/EditableDocumentTitle";
 import { FretPickerPopover } from "./components/FretPickerPopover";
 import { TabStaff } from "./components/TabStaff";
 import { TrashDropZone } from "./components/TrashDropZone";
+import { UndoRedoControls } from "./components/UndoRedoControls";
 import "./BanjoTabEditor.css";
 import { getDefaultMeasureTitle } from "./constants";
 import { useBanjoTabDocuments } from "./hooks/useBanjoTabDocuments";
+import { usePointerDocumentDrag } from "./hooks/usePointerDocumentDrag";
 import { usePointerMeasureDrag } from "./hooks/usePointerMeasureDrag";
 import { usePointerNoteDrag } from "./hooks/usePointerNoteDrag";
 import { formatNoteLabel } from "./noteFormatting";
@@ -30,12 +32,24 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
     editorState: state,
     commitTitle,
     dispatchTabAction: dispatch,
+    undoTabChange,
+    redoTabChange,
+    deleteDocument,
     loadDocument,
     startNewDraft,
+    canUndo,
+    canRedo,
     shouldConfirmDiscard,
   } = useBanjoTabDocuments(initialState);
   const dragApi = usePointerNoteDrag({ state, dispatch });
   const measureDragApi = usePointerMeasureDrag({ state, dispatch });
+  const documentDragApi = usePointerDocumentDrag({
+    onDeleteDocument: (id) => {
+      void deleteDocument(id);
+    },
+    confirmDeleteDocument: (document) =>
+      window.confirm(`Delete "${document.title}"? This cannot be undone.`),
+  });
   const notes = state.tab.measures.flatMap((measure) => measure.notes);
   const currentPickerNoteId = state.mode.type === "fret-picker" ? state.mode.noteId : undefined;
   const draggedNoteId = state.mode.type === "dragging-note" ? state.mode.noteId : undefined;
@@ -45,7 +59,7 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
     state.mode.type === "dragging-measure"
       ? state.tab.measures.find((measure) => measure.id === state.mode.measureId)
       : undefined;
-  const trashDropZoneState = getTrashDropZoneState(state.mode);
+  const trashDropZoneState = getTrashDropZoneState(state.mode, documentDragApi.dragState);
   const pickerReturnFocusRef = useRef<HTMLElement | null>(null);
 
   const openFretPicker = (
@@ -132,6 +146,35 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isEditableEventTarget(event.target) || !isUndoRedoShortcut(event)) {
+        return;
+      }
+
+      if (event.key.toLowerCase() === "z" && !event.shiftKey && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        if (canUndo) {
+          undoTabChange();
+        }
+        return;
+      }
+
+      if (
+        (event.key.toLowerCase() === "z" && event.shiftKey && (event.metaKey || event.ctrlKey)) ||
+        (event.key.toLowerCase() === "y" && event.ctrlKey)
+      ) {
+        event.preventDefault();
+        if (canRedo) {
+          redoTabChange();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [canRedo, canUndo, redoTabChange, undoTabChange]);
+
   return (
     <main className="banjo-tab-editor" aria-labelledby="banjo-tab-editor-title">
       <header className="banjo-tab-editor-header">
@@ -145,6 +188,7 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
             activeDocumentId={documentState.activeDocument.id}
             onNewFile={handleStartNewDraft}
             onLoadFile={handleLoadDocument}
+            documentDragApi={documentDragApi}
           />
           {documentState.storageError && (
             <p className="banjo-tab-storage-status" role="status">
@@ -152,7 +196,15 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
             </p>
           )}
         </div>
-        <AddMeasureButton onAddMeasure={() => dispatch({ type: "ADD_MEASURE" })} />
+        <div className="banjo-tab-header-actions">
+          <UndoRedoControls
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={undoTabChange}
+            onRedo={redoTabChange}
+          />
+          <AddMeasureButton onAddMeasure={() => dispatch({ type: "ADD_MEASURE" })} />
+        </div>
       </header>
       <TabStaff
         tab={state.tab}
@@ -176,6 +228,7 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
         onRegister={(element) => {
           dragApi.registerTrashZone(element);
           measureDragApi.registerTrashZone(element);
+          documentDragApi.registerTrashZone(element);
         }}
       />
       {state.mode.type === "dragging-note" && draggedNote && (
@@ -194,6 +247,18 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
           aria-hidden="true"
         >
           {draggedMeasure?.title || getDefaultMeasureTitle(state.mode.measureId)}
+        </div>
+      )}
+      {documentDragApi.dragState && (
+        <div
+          className="banjo-tab-document-drag-preview"
+          style={{
+            left: documentDragApi.dragState.pointer.x,
+            top: documentDragApi.dragState.pointer.y,
+          }}
+          aria-hidden="true"
+        >
+          {documentDragApi.dragState.document.title}
         </div>
       )}
     </main>
@@ -215,7 +280,34 @@ function restorePickerFocus(ref: { current: HTMLElement | null }) {
   }, 0);
 }
 
-function getTrashDropZoneState(mode: EditorMode) {
+function isUndoRedoShortcut(event: KeyboardEvent): boolean {
+  const key = event.key.toLowerCase();
+  return (
+    ((event.metaKey || event.ctrlKey) && key === "z") ||
+    (event.ctrlKey && key === "y")
+  );
+}
+
+function isEditableEventTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
+}
+
+function getTrashDropZoneState(
+  mode: EditorMode,
+  documentDragState: ReturnType<typeof usePointerDocumentDrag>["dragState"],
+) {
+  if (documentDragState) {
+    return {
+      isActive: true,
+      isOverTrash: documentDragState.overTrash,
+      label: "Drop tab to delete",
+    };
+  }
+
   switch (mode.type) {
     case "dragging-measure":
       return {

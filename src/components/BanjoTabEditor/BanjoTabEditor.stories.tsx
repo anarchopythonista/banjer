@@ -276,6 +276,48 @@ export const AddMeasureInteraction: Story = {
   },
 };
 
+export const UndoRedoButtonsInteraction: Story = {
+  args: {
+    initialState: makeEditorState([{ id: "measure-1", notes: [] }]),
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("button", { name: "Undo" })).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: "Redo" })).toBeDisabled();
+    await userEvent.click(canvas.getByLabelText("Add measure"));
+    await expect(canvas.getByLabelText("Measure 2")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Undo" })).toBeEnabled();
+    await userEvent.click(canvas.getByRole("button", { name: "Undo" }));
+    await expect(canvas.queryByLabelText("Measure 2")).not.toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Redo" })).toBeEnabled();
+    await userEvent.click(canvas.getByRole("button", { name: "Redo" }));
+    await expect(canvas.getByLabelText("Measure 2")).toBeInTheDocument();
+  },
+};
+
+export const UndoRedoKeyboardInteraction: Story = {
+  args: {
+    initialState: makeEditorState([{ id: "measure-1", notes: [] }]),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByLabelText("Set string 1 slot 1"));
+    await userEvent.click(canvas.getByRole("button", { name: "Fret 5" }));
+    await expect(canvas.getByRole("button", { name: "Edit fret 5 on string 1, slot 1" })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, {
+      key: "z",
+      ctrlKey: true,
+    });
+    await expect(canvas.queryByRole("button", { name: "Edit fret 5 on string 1, slot 1" })).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, {
+      key: "z",
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    await expect(canvas.getByRole("button", { name: "Edit fret 5 on string 1, slot 1" })).toBeInTheDocument();
+  },
+};
+
 export const CreateNoteInteraction: Story = {
   args: {
     initialState: makeEditorState([{ id: "measure-1", notes: [] }]),

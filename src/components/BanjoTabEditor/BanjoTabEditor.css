@@ -59,6 +59,49 @@
   flex: 1 1 auto;
 }
 
+.banjo-tab-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.banjo-tab-history-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.banjo-tab-history-button {
+  min-width: 50px;
+  min-height: 34px;
+  padding: 0 9px;
+  border: 1px solid var(--tab-measure-handle-border);
+  border-radius: 6px;
+  color: var(--tab-muted);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.banjo-tab-history-button:hover:not(:disabled) {
+  border-color: var(--tab-accent);
+  color: var(--tab-ink);
+  background: var(--tab-hover-bg);
+}
+
+.banjo-tab-history-button:focus-visible {
+  outline: 3px solid var(--tab-focus);
+  outline-offset: 2px;
+}
+
+.banjo-tab-history-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
 .banjo-tab-document-title {
   margin: 0;
   color: var(--tab-ink);
@@ -187,11 +230,43 @@
   cursor: pointer;
 }
 
+.banjo-tab-document-menu-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.banjo-tab-document-menu-file {
+  touch-action: none;
+}
+
+.banjo-tab-document-menu-delete {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--tab-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .banjo-tab-document-menu-item:hover,
-.banjo-tab-document-menu-item:focus-visible {
+.banjo-tab-document-menu-item:focus-visible,
+.banjo-tab-document-menu-delete:hover,
+.banjo-tab-document-menu-delete:focus-visible {
   outline: none;
   border-color: var(--tab-measure-handle-border);
   background: var(--tab-hover-bg);
+}
+
+.banjo-tab-document-menu-delete:hover,
+.banjo-tab-document-menu-delete:focus-visible {
+  color: var(--tab-danger);
 }
 
 .banjo-tab-document-menu-item[aria-current="true"] {
@@ -246,7 +321,8 @@
 .banjo-tab-staff *,
 .banjo-tab-trash-zone,
 .banjo-tab-drag-preview,
-.banjo-tab-measure-drag-preview {
+.banjo-tab-measure-drag-preview,
+.banjo-tab-document-drag-preview {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
@@ -723,6 +799,30 @@
   box-sizing: border-box;
 }
 
+.banjo-tab-document-drag-preview {
+  position: fixed;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: min(280px, calc(100vw - 32px));
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid var(--tab-accent);
+  border-radius: 8px;
+  color: #ffffff;
+  background: var(--tab-accent);
+  font-size: 0.9rem;
+  font-weight: 800;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: var(--tab-preview-shadow);
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 640px) {
   .banjo-tab-editor {
     padding: 16px;
@@ -738,6 +838,15 @@
 
   .banjo-tab-document-menu-button {
     opacity: 1;
+  }
+
+  .banjo-tab-header-actions {
+    gap: 6px;
+  }
+
+  .banjo-tab-history-button {
+    min-width: 44px;
+    padding: 0 7px;
   }
 
   .banjo-tab-string-row {
