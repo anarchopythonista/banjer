@@ -1,4 +1,4 @@
-import { createInitialTab, createMeasureWithId, createNoteId } from "./constants";
+import { createInitialTab, createMeasureWithId, createNoteId, getDefaultMeasureTitle } from "./constants";
 import type {
   BanjoTabEditorState,
   EditorMode,
@@ -247,11 +247,11 @@ function moveMeasure(
 
 function renameMeasure(measure: TabMeasureData, title: string): TabMeasureData {
   const normalizedTitle = title.trim();
-  const { title: _previousTitle, ...measureWithoutTitle } = measure;
 
-  return normalizedTitle
-    ? { ...measureWithoutTitle, title: normalizedTitle }
-    : measureWithoutTitle;
+  return {
+    ...measure,
+    title: normalizedTitle || getDefaultMeasureTitle(measure.id),
+  };
 }
 
 function deleteMeasure(measures: TabMeasureData[], measureId: string): TabMeasureData[] {

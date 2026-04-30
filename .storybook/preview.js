@@ -1,3 +1,6 @@
+import "../src/index.css";
+import "../src/components/AppShell/AppShell.css";
+
 /** @type { import('@storybook/react-vite').Preview } */
 const preview = {
   parameters: {

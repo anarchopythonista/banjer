@@ -26,6 +26,7 @@ export function createMeasure(): TabMeasureData {
 export function createMeasureWithId(id: string): TabMeasureData {
   return {
     id,
+    title: getDefaultMeasureTitle(id),
     beats: DEFAULT_BEATS_PER_MEASURE,
     subdivision: DEFAULT_SUBDIVISION,
     notes: [],
@@ -43,4 +44,9 @@ export function createInitialTab() {
     tuning: DEFAULT_TUNING,
     measures: [createMeasure()],
   };
+}
+
+export function getDefaultMeasureTitle(id: string): string {
+  const measureNumber = /^measure-(\d+)$/.exec(id)?.[1];
+  return measureNumber ? `Measure ${measureNumber}` : "Measure";
 }

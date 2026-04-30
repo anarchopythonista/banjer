@@ -245,6 +245,32 @@ describe("banjoTabReducer", () => {
     expect(state.tab.measures.map((item) => item.id)).toEqual(["measure-2", "measure-3", "measure-1"]);
   });
 
+  it("creates new measures with durable default titles", () => {
+    const state = reducerWith(stateWithMeasures([
+      measure("measure-1", []),
+    ]), {
+      type: "ADD_MEASURE",
+    });
+
+    expect(state.tab.measures.map((item) => item.title)).toEqual(["Measure 1", "Measure 2"]);
+  });
+
+  it("keeps default measure titles with their measure data when rearranging measures", () => {
+    const state = reducerWith(stateWithMeasures([
+      measure("measure-1", [{ id: "note-1", stringIndex: 0, position: 4, fret: 2 }]),
+      measure("measure-2", [{ id: "note-2", stringIndex: 1, position: 8, fret: 3 }]),
+    ]), {
+      type: "MOVE_MEASURE",
+      measureId: "measure-1",
+      targetIndex: 1,
+    });
+
+    expect(state.tab.measures.map((item) => item.title)).toEqual(["Measure 2", "Measure 1"]);
+    expect(state.tab.measures[0].notes).toEqual([
+      { id: "note-2", stringIndex: 1, position: 8, fret: 3 },
+    ]);
+  });
+
   it("renames a measure", () => {
     const state = reducerWith(stateWithMeasures([
       measure("measure-1", []),
@@ -257,7 +283,7 @@ describe("banjoTabReducer", () => {
     expect(state.tab.measures[0]).toMatchObject({ id: "measure-1", title: "Break" });
   });
 
-  it("trims measure titles and clears blank titles", () => {
+  it("trims measure titles and resets blank titles to the measure default", () => {
     const renamedState = reducerWith(stateWithMeasures([
       measure("measure-1", [], "Verse"),
     ]), {
@@ -272,7 +298,7 @@ describe("banjoTabReducer", () => {
     });
 
     expect(renamedState.tab.measures[0]).toMatchObject({ title: "Chorus" });
-    expect(clearedState.tab.measures[0]).not.toHaveProperty("title");
+    expect(clearedState.tab.measures[0]).toMatchObject({ title: "Measure 1" });
   });
 
   it("preserves articulated notes when rearranging measures", () => {
@@ -395,7 +421,7 @@ function measure(
 ) {
   return {
     id,
-    ...(title ? { title } : {}),
+    title: title ?? `Measure ${id.split("-").at(-1) ?? "1"}`,
     beats: 4,
     subdivision: 4,
     notes,

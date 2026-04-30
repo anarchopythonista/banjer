@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fireEvent, userEvent, within } from "storybook/test";
-import { DEFAULT_TUNING } from "./constants";
+import { DEFAULT_TUNING, getDefaultMeasureTitle } from "./constants";
 import { BanjoTabEditor } from "./BanjoTabEditor";
 import type { BanjoTabEditorState } from "./types";
 
@@ -272,6 +272,7 @@ export const AddMeasureInteraction: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByLabelText("Add measure"));
     await expect(canvas.getByLabelText("Measure 2")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Edit measure 2 title: Measure 2" })).toBeInTheDocument();
   },
 };
 
@@ -418,6 +419,7 @@ export const DraggingMeasureVisualState: Story = {
       ...makeEditorState([
         {
           id: "measure-1",
+          title: "Intro",
           notes: [{ id: "note-1", stringIndex: 0, position: 4, fret: 2 }],
         },
         {
@@ -435,8 +437,9 @@ export const DraggingMeasureVisualState: Story = {
       },
     },
   },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     await expect(canvas.getByText("Drop measure to delete")).toBeInTheDocument();
+    await expect(canvasElement.querySelector(".banjo-tab-measure-drag-preview")).toHaveTextContent("Intro");
   },
 };
 
@@ -487,6 +490,8 @@ export const DragDropMeasureReorders: Story = {
     });
 
     const measuresAfter = canvasElement.querySelectorAll(".banjo-tab-measure");
+    await expect(within(measuresAfter[0] as HTMLElement).getByRole("button", { name: "Edit measure 1 title: Measure 2" })).toBeInTheDocument();
+    await expect(within(measuresAfter[1] as HTMLElement).getByRole("button", { name: "Edit measure 2 title: Measure 1" })).toBeInTheDocument();
     await expect(within(measuresAfter[0] as HTMLElement).getByRole("button", { name: /Edit fret 3/ })).toBeInTheDocument();
     await expect(within(measuresAfter[1] as HTMLElement).getByRole("button", { name: /Edit fret 2/ })).toBeInTheDocument();
   },
@@ -682,7 +687,7 @@ function makeEditorState(
       tuning: DEFAULT_TUNING,
       measures: measures.map((measure) => ({
         id: measure.id,
-        ...(measure.title ? { title: measure.title } : {}),
+        title: measure.title ?? getDefaultMeasureTitle(measure.id),
         beats: 4,
         subdivision: 4,
         notes: measure.notes,

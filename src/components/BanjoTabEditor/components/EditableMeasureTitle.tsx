@@ -3,19 +3,16 @@ import type { KeyboardEvent, PointerEvent } from "react";
 
 type EditableMeasureTitleProps = {
   title: string;
-  fallbackTitle: string;
   measureNumber: number;
   onCommitTitle: (title: string) => void;
 };
 
 export function EditableMeasureTitle({
   title,
-  fallbackTitle,
   measureNumber,
   onCommitTitle,
 }: EditableMeasureTitleProps) {
-  const displayTitle = title || fallbackTitle;
-  const [draftTitle, setDraftTitle] = useState(displayTitle);
+  const [draftTitle, setDraftTitle] = useState(title);
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -27,7 +24,7 @@ export function EditableMeasureTitle({
   }, [isEditing]);
 
   const startEditing = () => {
-    setDraftTitle(displayTitle);
+    setDraftTitle(title);
     setIsEditing(true);
   };
 
@@ -37,7 +34,7 @@ export function EditableMeasureTitle({
   };
 
   const cancelEditing = () => {
-    setDraftTitle(displayTitle);
+    setDraftTitle(title);
     setIsEditing(false);
   };
 
@@ -75,12 +72,12 @@ export function EditableMeasureTitle({
         <button
           type="button"
           className="banjo-tab-measure-title-button"
-          aria-label={`Edit measure ${measureNumber} title: ${displayTitle}`}
+          aria-label={`Edit measure ${measureNumber} title: ${title}`}
           data-measure-header-interactive="true"
           onClick={startEditing}
           onPointerDown={stopHeaderDrag}
         >
-          {displayTitle}
+          {title}
         </button>
       )}
     </div>

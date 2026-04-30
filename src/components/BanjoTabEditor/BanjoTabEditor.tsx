@@ -6,6 +6,7 @@ import { FretPickerPopover } from "./components/FretPickerPopover";
 import { TabStaff } from "./components/TabStaff";
 import { TrashDropZone } from "./components/TrashDropZone";
 import "./BanjoTabEditor.css";
+import { getDefaultMeasureTitle } from "./constants";
 import { useBanjoTabDocuments } from "./hooks/useBanjoTabDocuments";
 import { usePointerMeasureDrag } from "./hooks/usePointerMeasureDrag";
 import { usePointerNoteDrag } from "./hooks/usePointerNoteDrag";
@@ -40,6 +41,10 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
   const draggedNoteId = state.mode.type === "dragging-note" ? state.mode.noteId : undefined;
   const currentPickerNote = findNoteById(notes, currentPickerNoteId);
   const draggedNote = findNoteById(notes, draggedNoteId);
+  const draggedMeasure =
+    state.mode.type === "dragging-measure"
+      ? state.tab.measures.find((measure) => measure.id === state.mode.measureId)
+      : undefined;
   const trashDropZoneState = getTrashDropZoneState(state.mode);
   const pickerReturnFocusRef = useRef<HTMLElement | null>(null);
 
@@ -188,7 +193,7 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
           style={{ left: state.mode.pointer.x, top: state.mode.pointer.y }}
           aria-hidden="true"
         >
-          Measure {state.mode.originIndex + 1}
+          {draggedMeasure?.title || getDefaultMeasureTitle(state.mode.measureId)}
         </div>
       )}
     </main>

@@ -74,6 +74,7 @@
 .banjo-tab-document-title-input {
   width: 100%;
   min-width: 0;
+  height: calc(1em + 6px);
   padding: 2px 4px;
   border: 1px solid transparent;
   border-radius: 6px;
@@ -86,9 +87,17 @@
   box-sizing: border-box;
 }
 
-.banjo-tab-document-title-button {
+.banjo-tab-document-title-button,
+.banjo-tab-document-title-input {
   display: block;
+}
+
+.banjo-tab-document-title-button {
   cursor: text;
+}
+
+.banjo-tab-document-title-input {
+  appearance: none;
 }
 
 .banjo-tab-document-title-button:hover {
@@ -330,7 +339,7 @@
 
 .banjo-tab-measure-title-button,
 .banjo-tab-measure-title-input {
-  width: 0 auto;
+  width: auto;
   min-width: 0;
   padding: 4px 6px;
   border: 1px solid transparent;

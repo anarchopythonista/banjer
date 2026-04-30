@@ -11,7 +11,7 @@ export type BanjoString = {
 
 export type TabMeasureData = {
   id: string;
-  title?: string;
+  title: string;
   beats: number;
   subdivision: number;
   notes: TabNoteData[];

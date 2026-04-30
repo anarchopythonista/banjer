@@ -1,4 +1,5 @@
 import type { KeyboardEvent, PointerEvent } from "react";
+import { getDefaultMeasureTitle } from "../constants";
 import type { BanjoString, EditorMode, NoteLocation, ScreenPoint, TabMeasureData, TabNoteData } from "../types";
 import { EditableMeasureTitle } from "./EditableMeasureTitle";
 import { TabStringRow } from "./TabStringRow";
@@ -39,7 +40,7 @@ export function TabMeasure({
   measureDragApi,
   onRenameMeasure,
 }: TabMeasureProps) {
-  const fallbackTitle = `Measure ${measureNumber}`;
+  const measureTitle = measure.title || getDefaultMeasureTitle(measure.id);
 
   const startMeasureDrag = (event: PointerEvent<HTMLElement>) => {
     measureDragApi.measurePointerHandlers.onPointerDown(measure.id, measureIndex, event);
@@ -83,11 +84,11 @@ export function TabMeasure({
       data-dragging={
         mode.type === "dragging-measure" && mode.measureId === measure.id ? true : undefined
       }
-      aria-label={`Measure ${measureNumber}`}
+      aria-label={measureTitle}
     >
       <div
         className="banjo-tab-measure-header"
-        aria-label={`Drag ${measure.title || fallbackTitle}`}
+        aria-label={`Drag ${measureTitle}`}
         onPointerDown={handleHeaderPointerDown}
         onPointerMove={measureDragApi.measurePointerHandlers.onPointerMove}
         onPointerUp={measureDragApi.measurePointerHandlers.onPointerUp}
@@ -97,7 +98,7 @@ export function TabMeasure({
         <button
           type="button"
           className="banjo-tab-measure-handle"
-          aria-label={`Drag ${measure.title || fallbackTitle}`}
+          aria-label={`Drag ${measureTitle}`}
           onKeyDown={handleMeasureKeyDown}
           onPointerDown={handleMeasureGripPointerDown}
           onPointerMove={measureDragApi.measurePointerHandlers.onPointerMove}
@@ -108,14 +109,13 @@ export function TabMeasure({
           <span aria-hidden="true">::</span>
         </button>
         <EditableMeasureTitle
-          title={measure.title ?? ""}
-          fallbackTitle={fallbackTitle}
+          title={measureTitle}
           measureNumber={measureNumber}
           onCommitTitle={(title) => onRenameMeasure(measure.id, title)}
         />
         <span>{measure.beats}/{measure.subdivision}</span>
       </div>
-      <div className="banjo-tab-measure-grid" role="grid" aria-label={`Tablature measure ${measureNumber}`}>
+      <div className="banjo-tab-measure-grid" role="grid" aria-label={`Tablature ${measureTitle}`}>
         {tuning.map((string, stringIndex) => (
           <TabStringRow
             key={string.id}
