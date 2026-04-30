@@ -1,14 +1,49 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BanjoTabEditor } from "../BanjoTabEditor/BanjoTabEditor";
+import { getStoredTheme, saveTheme, type AppTheme } from "./appPreferencesRepository";
 import "./AppShell.css";
 
 type AppShellProps = {
-  initialTheme?: "light" | "dark";
+  initialTheme?: AppTheme;
+  persistTheme?: boolean;
 };
 
-export function AppShell({ initialTheme = "light" }: AppShellProps) {
-  const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
+export function AppShell({ initialTheme, persistTheme = true }: AppShellProps) {
+  const [theme, setTheme] = useState<AppTheme>(initialTheme ?? "light");
   const isDark = theme === "dark";
+
+  useEffect(() => {
+    if (!persistTheme || initialTheme !== undefined) {
+      return;
+    }
+
+    let isActive = true;
+
+    void getStoredTheme()
+      .then((storedTheme) => {
+        if (isActive && storedTheme) {
+          setTheme(storedTheme);
+        }
+      })
+      .catch(() => {
+        // Theme persistence should never block the editor.
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [initialTheme, persistTheme]);
+
+  const handleToggleTheme = () => {
+    const nextTheme = isDark ? "light" : "dark";
+    setTheme(nextTheme);
+
+    if (persistTheme) {
+      void saveTheme(nextTheme).catch(() => {
+        // Keep the user's in-memory choice even if storage fails.
+      });
+    }
+  };
 
   return (
     <div className="app-shell" data-theme={theme}>
@@ -21,7 +56,7 @@ export function AppShell({ initialTheme = "light" }: AppShellProps) {
           className="app-shell-theme-toggle"
           aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
           aria-pressed={isDark}
-          onClick={() => setTheme(isDark ? "light" : "dark")}
+          onClick={handleToggleTheme}
         >
           <span aria-hidden="true">{isDark ? "Light" : "Dark"}</span>
         </button>

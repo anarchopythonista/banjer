@@ -5,6 +5,9 @@ import { AppShell } from "./AppShell";
 const meta = {
   title: "Components/AppShell",
   component: AppShell,
+  args: {
+    persistTheme: false,
+  },
   tags: ["autodocs"],
   parameters: {
     layout: "fullscreen",

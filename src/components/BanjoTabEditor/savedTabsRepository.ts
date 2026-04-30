@@ -3,10 +3,7 @@ import type {
   SavedTabRecord,
   SavedTabSummary,
 } from "./types";
-
-const DATABASE_NAME = "banjer";
-const DATABASE_VERSION = 1;
-const TAB_STORE_NAME = "tabs";
+import { openBanjerDatabase, TAB_STORE_NAME } from "./banjerDatabase";
 
 export async function listSavedTabs(): Promise<SavedTabSummary[]> {
   const database = await openSavedTabsDatabase();
@@ -107,25 +104,7 @@ export function sortSavedTabSummaries(
 }
 
 function openSavedTabsDatabase(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
-
-    request.onupgradeneeded = () => {
-      const database = request.result;
-
-      if (!database.objectStoreNames.contains(TAB_STORE_NAME)) {
-        const store = database.createObjectStore(TAB_STORE_NAME, {
-          keyPath: "id",
-        });
-        store.createIndex("lastOpenedAt", "lastOpenedAt");
-        store.createIndex("updatedAt", "updatedAt");
-      }
-    };
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () =>
-      reject(request.error ?? new Error("Unable to open saved tabs database"));
-  });
+  return openBanjerDatabase();
 }
 
 function getAllRecords(database: IDBDatabase): Promise<SavedTabRecord[]> {
