@@ -50,6 +50,15 @@
   margin: 0 auto 24px;
 }
 
+.banjo-tab-document-controls {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .banjo-tab-document-title {
   margin: 0;
   color: var(--tab-ink);
@@ -92,6 +101,103 @@
   outline: 3px solid var(--tab-focus);
   outline-offset: 2px;
   background: var(--app-title-focus-bg, rgba(255, 255, 255, 0.84));
+}
+
+.banjo-tab-document-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.banjo-tab-document-menu-button {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--tab-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 120ms ease,
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.banjo-tab-document-controls:hover .banjo-tab-document-menu-button,
+.banjo-tab-document-controls:focus-within .banjo-tab-document-menu-button,
+.banjo-tab-document-menu-button[aria-expanded="true"] {
+  opacity: 1;
+}
+
+.banjo-tab-document-menu-button:hover {
+  border-color: var(--tab-measure-handle-border);
+  background: var(--tab-hover-bg);
+}
+
+.banjo-tab-document-menu-button:focus-visible {
+  opacity: 1;
+  outline: 3px solid var(--tab-focus);
+  outline-offset: 2px;
+}
+
+.banjo-tab-document-menu-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  min-width: min(260px, calc(100vw - 40px));
+  padding: 6px;
+  border: 1px solid var(--tab-popover-border);
+  border-radius: 8px;
+  background: var(--tab-paper);
+  box-shadow: var(--tab-popover-shadow);
+}
+
+.banjo-tab-document-menu-item {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--tab-ink);
+  background: transparent;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.banjo-tab-document-menu-item:hover,
+.banjo-tab-document-menu-item:focus-visible {
+  outline: none;
+  border-color: var(--tab-measure-handle-border);
+  background: var(--tab-hover-bg);
+}
+
+.banjo-tab-document-menu-item[aria-current="true"] {
+  color: var(--tab-accent);
+  font-weight: 700;
+}
+
+.banjo-tab-storage-status {
+  position: absolute;
+  left: 4px;
+  top: calc(100% + 4px);
+  margin: 0;
+  color: var(--tab-danger);
+  font-size: 0.85rem;
+  font-weight: 650;
 }
 
 .banjo-tab-add-measure {
@@ -173,13 +279,22 @@
   font-size: 0.85rem;
   font-weight: 650;
   text-transform: uppercase;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.banjo-tab-measure-header:active {
+  cursor: grabbing;
 }
 
 .banjo-tab-measure-handle {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-width: 0;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
   padding: 4px 8px;
   border: 1px solid transparent;
   border-radius: 6px;
@@ -206,6 +321,57 @@
 .banjo-tab-measure-handle:focus-visible {
   outline: 3px solid var(--tab-focus);
   outline-offset: 2px;
+}
+
+.banjo-tab-measure-title {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.banjo-tab-measure-title-button,
+.banjo-tab-measure-title-input {
+  width: 0 auto;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1.2;
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: inherit;
+  box-sizing: border-box;
+}
+
+.banjo-tab-measure-title-button {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: text;
+}
+
+.banjo-tab-measure-title-input {
+  background: var(--tab-paper);
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.banjo-tab-measure-title-button:hover {
+  border-color: var(--tab-measure-handle-border);
+  background: var(--tab-hover-bg);
+}
+
+.banjo-tab-measure-title-button:focus-visible,
+.banjo-tab-measure-title-input:focus-visible {
+  outline: 3px solid var(--tab-focus);
+  outline-offset: 2px;
+  border-color: var(--tab-measure-active-border);
+  background: var(--app-title-focus-bg, rgba(255, 255, 255, 0.84));
 }
 
 .banjo-tab-measure-grid {
@@ -281,9 +447,9 @@
   z-index: 3;
   display: inline-grid;
   place-items: center;
-  min-width: 28px;
+  min-width: 30px;
   height: 28px;
-  padding: 0 4px;
+  padding: 0 7px;
   border: 1px solid var(--tab-line);
   border-radius: 999px;
   color: var(--tab-ink);
@@ -295,6 +461,7 @@
   box-sizing: border-box;
   cursor: pointer;
   font-family: inherit;
+  white-space: nowrap;
   touch-action: none;
   user-select: none;
 }
@@ -349,6 +516,13 @@
   text-transform: uppercase;
 }
 
+.banjo-tab-fret-picker-source {
+  margin: -2px 0 10px;
+  color: var(--tab-accent);
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
 .banjo-tab-fret-picker-heading button {
   display: inline-grid;
   place-items: center;
@@ -390,6 +564,14 @@
   background: var(--tab-hover-bg);
 }
 
+.banjo-tab-fret-option:disabled {
+  color: var(--tab-muted);
+  background: rgba(255, 255, 255, 0.42);
+  border-style: dashed;
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
 .banjo-tab-fret-option[aria-pressed="true"] {
   border-color: var(--tab-accent);
   color: #ffffff;
@@ -397,9 +579,55 @@
 }
 
 .banjo-tab-fret-option:focus-visible,
-.banjo-tab-fret-picker-heading button:focus-visible {
+.banjo-tab-fret-picker-heading button:focus-visible,
+.banjo-tab-fret-more-button:focus-visible,
+.banjo-tab-articulation-actions button:focus-visible {
   outline: 3px solid var(--tab-focus);
   outline-offset: 2px;
+}
+
+.banjo-tab-fret-more-button {
+  width: 100%;
+  margin-top: 10px;
+  min-height: 38px;
+  border: 1px solid var(--tab-measure-handle-border);
+  border-radius: 7px;
+  color: var(--tab-accent);
+  background: var(--tab-fret-option-bg);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 750;
+}
+
+.banjo-tab-fret-more-button:hover {
+  border-color: var(--tab-accent);
+  background: var(--tab-hover-bg);
+}
+
+.banjo-tab-articulation-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.banjo-tab-articulation-actions button {
+  min-width: 0;
+  min-height: 38px;
+  border: 1px solid var(--tab-border);
+  border-radius: 7px;
+  color: var(--tab-ink);
+  background: var(--tab-fret-option-bg);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
+.banjo-tab-articulation-actions button:hover {
+  border-color: var(--tab-accent);
+  background: var(--tab-hover-bg);
 }
 
 .banjo-tab-trash-zone {
@@ -497,6 +725,10 @@
 
   .banjo-tab-editor h1 {
     font-size: 2rem;
+  }
+
+  .banjo-tab-document-menu-button {
+    opacity: 1;
   }
 
   .banjo-tab-string-row {

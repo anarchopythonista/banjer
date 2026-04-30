@@ -6,8 +6,18 @@ import type { usePointerMeasureDrag } from "../hooks/usePointerMeasureDrag";
 type TabStaffProps = {
   tab: BanjoTab;
   mode: EditorMode;
-  onSlotPress: (location: NoteLocation, screenPoint: ScreenPoint) => void;
-  onNotePress: (note: TabNoteData, location: NoteLocation, screenPoint: ScreenPoint) => void;
+  onSlotPress: (
+    location: NoteLocation,
+    screenPoint: ScreenPoint,
+    returnFocusElement: HTMLElement,
+  ) => void;
+  onNotePress: (
+    note: TabNoteData,
+    location: NoteLocation,
+    screenPoint: ScreenPoint,
+    returnFocusElement: HTMLElement,
+  ) => void;
+  onRenameMeasure: (measureId: string, title: string) => void;
   dragApi: ReturnType<typeof usePointerNoteDrag>;
   measureDragApi: ReturnType<typeof usePointerMeasureDrag>;
 };
@@ -17,6 +27,7 @@ export function TabStaff({
   mode,
   onSlotPress,
   onNotePress,
+  onRenameMeasure,
   dragApi,
   measureDragApi,
 }: TabStaffProps) {
@@ -35,6 +46,7 @@ export function TabStaff({
             mode={mode}
             onSlotPress={onSlotPress}
             onNotePress={onNotePress}
+            onRenameMeasure={onRenameMeasure}
             dragApi={dragApi}
             measureDragApi={measureDragApi}
           />

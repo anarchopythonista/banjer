@@ -3,16 +3,24 @@ import type {
   BanjoTabEditorState,
   EditorMode,
   NoteLocation,
+  TabArticulation,
   TabMeasureData,
   TabNoteData,
 } from "./types";
 
 export type BanjoTabAction =
   | { type: "ADD_MEASURE" }
-  | { type: "ADD_OR_UPDATE_NOTE"; location: NoteLocation; fret: number; noteId?: string }
+  | {
+      type: "ADD_OR_UPDATE_NOTE";
+      location: NoteLocation;
+      fret: number;
+      articulation?: TabArticulation;
+      noteId?: string;
+    }
   | { type: "MOVE_NOTE"; noteId: string; target: NoteLocation }
   | { type: "DELETE_NOTE"; noteId: string }
   | { type: "MOVE_MEASURE"; measureId: string; targetIndex: number }
+  | { type: "RENAME_MEASURE"; measureId: string; title: string }
   | { type: "DELETE_MEASURE"; measureId: string }
   | { type: "SET_EDITOR_MODE"; mode: EditorMode };
 
@@ -43,7 +51,13 @@ export function banjoTabReducer(
         tab: {
           ...state.tab,
           measures: state.tab.measures.map((measure) =>
-            updateMeasureNote(measure, action.location, action.fret, action.noteId),
+            updateMeasureNote(
+              measure,
+              action.location,
+              action.fret,
+              action.articulation,
+              action.noteId,
+            ),
           ),
         },
       };
@@ -78,6 +92,19 @@ export function banjoTabReducer(
         },
       };
 
+    case "RENAME_MEASURE":
+      return {
+        ...state,
+        tab: {
+          ...state.tab,
+          measures: state.tab.measures.map((measure) =>
+            measure.id === action.measureId
+              ? renameMeasure(measure, action.title)
+              : measure,
+          ),
+        },
+      };
+
     case "DELETE_MEASURE":
       return {
         ...state,
@@ -102,6 +129,7 @@ function updateMeasureNote(
   measure: TabMeasureData,
   location: NoteLocation,
   fret: number,
+  articulation?: TabArticulation,
   noteId?: string,
 ): TabMeasureData {
   if (measure.id !== location.measureId) {
@@ -117,7 +145,7 @@ function updateMeasureNote(
       ...measure,
       notes: measure.notes.map((note) =>
         note.id === existingNote.id
-          ? { ...note, stringIndex: location.stringIndex, position: location.position, fret }
+          ? makeUpdatedNote(note, location, fret, articulation)
           : note,
       ),
     };
@@ -132,8 +160,24 @@ function updateMeasureNote(
         stringIndex: location.stringIndex,
         position: location.position,
         fret,
+        ...(articulation ? { articulation } : {}),
       },
     ],
+  };
+}
+
+function makeUpdatedNote(
+  note: TabNoteData,
+  location: NoteLocation,
+  fret: number,
+  articulation?: TabArticulation,
+): TabNoteData {
+  return {
+    id: note.id,
+    stringIndex: location.stringIndex,
+    position: location.position,
+    fret,
+    ...(articulation ? { articulation } : {}),
   };
 }
 
@@ -199,6 +243,15 @@ function moveMeasure(
   const clampedTargetIndex = Math.min(Math.max(targetIndex, 0), nextMeasures.length);
   nextMeasures.splice(clampedTargetIndex, 0, movedMeasure);
   return nextMeasures;
+}
+
+function renameMeasure(measure: TabMeasureData, title: string): TabMeasureData {
+  const normalizedTitle = title.trim();
+  const { title: _previousTitle, ...measureWithoutTitle } = measure;
+
+  return normalizedTitle
+    ? { ...measureWithoutTitle, title: normalizedTitle }
+    : measureWithoutTitle;
 }
 
 function deleteMeasure(measures: TabMeasureData[], measureId: string): TabMeasureData[] {

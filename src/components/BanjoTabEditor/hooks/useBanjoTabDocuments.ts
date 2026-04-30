@@ -231,6 +231,7 @@ export function useBanjoTabDocuments(
   }, [dispatchSessionAction]);
 
   useMountDocuments({
+    enabled: initialState === undefined,
     dispatchSessionAction,
     getSessionState,
   });
@@ -461,13 +462,19 @@ function getNextSaveToken(ref: { current: number }): number {
 }
 
 function useMountDocuments({
+  enabled,
   dispatchSessionAction,
   getSessionState,
 }: {
+  enabled: boolean;
   dispatchSessionAction: (action: DocumentSessionAction) => DocumentSessionState;
   getSessionState: () => DocumentSessionState;
 }) {
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     let isActive = true;
     const expectedDocumentRevision = getSessionState().documentRevision;
     const initialTab = getSessionState().editorState.tab;
@@ -509,7 +516,7 @@ function useMountDocuments({
     return () => {
       isActive = false;
     };
-  }, [dispatchSessionAction, getSessionState]);
+  }, [dispatchSessionAction, enabled, getSessionState]);
 }
 
 function getStorageErrorMessage(error: unknown, fallbackMessage: string): string {

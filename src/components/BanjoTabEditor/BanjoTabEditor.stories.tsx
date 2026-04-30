@@ -25,6 +25,8 @@ export const EmptyEditor: Story = {
     await expect(canvas.getByLabelText("Add measure")).toBeInTheDocument();
     await expect(canvas.getByLabelText("Measure 1")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Edit title: Untitled" })).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("button", { name: "Open file menu" }));
+    await expect(canvas.getByRole("menuitem", { name: "New file..." })).toBeInTheDocument();
   },
 };
 
@@ -38,6 +40,8 @@ export const RenameTitleInteraction: Story = {
     await userEvent.clear(titleInput);
     await userEvent.type(titleInput, "Foggy Mountain{Enter}");
     await expect(canvas.getByRole("button", { name: "Edit title: Foggy Mountain" })).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("button", { name: "Open file menu" }));
+    await expect(canvas.getAllByRole("menuitem", { name: "Foggy Mountain" }).length).toBeGreaterThan(0);
   },
 };
 
@@ -57,10 +61,12 @@ export const MultipleMeasures: Story = {
     initialState: makeEditorState([
       {
         id: "measure-1",
+        title: "Intro",
         notes: [{ id: "note-1", stringIndex: 2, position: 0, fret: 0 }],
       },
       {
         id: "measure-2",
+        title: "Break",
         notes: [{ id: "note-2", stringIndex: 1, position: 8, fret: 3 }],
       },
       {
@@ -68,6 +74,43 @@ export const MultipleMeasures: Story = {
         notes: [{ id: "note-3", stringIndex: 4, position: 15, fret: 5 }],
       },
     ]),
+  },
+};
+
+export const RenameMeasureTitleInteraction: Story = {
+  args: {
+    initialState: makeEditorState([
+      {
+        id: "measure-1",
+        notes: [],
+      },
+    ]),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Edit measure 1 title: Measure 1" }));
+    const titleInput = canvas.getByLabelText("Edit measure 1 title");
+    await userEvent.clear(titleInput);
+    await userEvent.type(titleInput, "Break{Enter}");
+    await expect(canvas.getByRole("button", { name: "Edit measure 1 title: Break" })).toBeInTheDocument();
+  },
+};
+
+export const ClearMeasureTitleInteraction: Story = {
+  args: {
+    initialState: makeEditorState([
+      {
+        id: "measure-1",
+        title: "Break",
+        notes: [],
+      },
+    ]),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Edit measure 1 title: Break" }));
+    const titleInput = canvas.getByLabelText("Edit measure 1 title");
+    await userEvent.clear(titleInput);
+    await userEvent.type(titleInput, "{Enter}");
+    await expect(canvas.getByRole("button", { name: "Edit measure 1 title: Measure 1" })).toBeInTheDocument();
   },
 };
 
@@ -106,6 +149,76 @@ export const FretPickerOpen: Story = {
   },
 };
 
+export const PlainNotePicker: Story = {
+  args: {
+    initialState: {
+      ...makeEditorState([{ id: "measure-1", notes: [] }]),
+      mode: {
+        type: "fret-picker",
+        location: { measureId: "measure-1", stringIndex: 0, position: 0 },
+        screenPoint: { x: 360, y: 210 },
+      },
+    },
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("dialog", { name: "Choose fret" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "More for fret 0" })).toBeInTheDocument();
+  },
+};
+
+export const ArticulationMenuOpen: Story = {
+  args: {
+    initialState: editorStateWithOpenPicker(2),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "More for fret 2" }));
+    await expect(canvas.getByRole("dialog", { name: "Choose articulation" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Hammer-on" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Pull-off" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Slide" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Bend" })).toBeInTheDocument();
+  },
+};
+
+export const HammerOnTargetSelection: Story = {
+  args: {
+    initialState: editorStateWithOpenPicker(2),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "More for fret 2" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Hammer-on" }));
+    await expect(canvas.getByRole("dialog", { name: "Choose Hammer-on target" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Fret 2 unavailable for Hammer-on target" })).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: "Fret 4" })).toBeEnabled();
+  },
+};
+
+export const PullOffTargetSelection: Story = {
+  args: {
+    initialState: editorStateWithOpenPicker(4),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "More for fret 4" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Pull-off" }));
+    await expect(canvas.getByRole("dialog", { name: "Choose Pull-off target" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Fret 2" })).toBeEnabled();
+    await expect(canvas.getByRole("button", { name: "Fret 4 unavailable for Pull-off target" })).toBeDisabled();
+  },
+};
+
+export const SlideTargetSelection: Story = {
+  args: {
+    initialState: editorStateWithOpenPicker(5),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "More for fret 5" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Slide" }));
+    await expect(canvas.getByRole("dialog", { name: "Choose Slide target" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Fret 2" })).toBeEnabled();
+    await expect(canvas.getByRole("button", { name: "Fret 5 unavailable for Slide target" })).toBeDisabled();
+  },
+};
+
 export const FretPickerNearScreenEdge: Story = {
   args: {
     initialState: {
@@ -127,6 +240,28 @@ export const FretPickerNearScreenEdge: Story = {
     viewport: {
       defaultViewport: "mobile1",
     },
+  },
+};
+
+export const MixedArticulatedNotes: Story = {
+  args: {
+    initialState: makeEditorState([
+      {
+        id: "measure-1",
+        notes: [
+          { id: "note-1", stringIndex: 0, position: 1, fret: 2, articulation: { type: "hammer-on", targetFret: 4 } },
+          { id: "note-2", stringIndex: 1, position: 4, fret: 4, articulation: { type: "pull-off", targetFret: 2 } },
+          { id: "note-3", stringIndex: 2, position: 7, fret: 2, articulation: { type: "slide", targetFret: 5 } },
+          { id: "note-4", stringIndex: 3, position: 10, fret: 5, articulation: { type: "slide", targetFret: 2 } },
+          { id: "note-5", stringIndex: 4, position: 13, fret: 7, articulation: { type: "bend" } },
+          { id: "note-6", stringIndex: 0, position: 15, fret: 10, articulation: { type: "hammer-on", targetFret: 12 } },
+        ],
+      },
+    ]),
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("button", { name: "Edit fret 2h4 on string 1, slot 2" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Edit fret 10h12 on string 1, slot 16" })).toBeInTheDocument();
   },
 };
 
@@ -319,7 +454,7 @@ export const DragDropMeasureReorders: Story = {
     ]),
   },
   play: async ({ canvas, canvasElement }) => {
-    const handle = canvas.getByRole("button", { name: "Drag measure 1" });
+    const handle = canvas.getByRole("button", { name: "Drag Measure 1" });
     const measuresBefore = canvasElement.querySelectorAll(".banjo-tab-measure");
     const startRect = handle.getBoundingClientRect();
     const endRect = measuresBefore[1].getBoundingClientRect();
@@ -357,6 +492,66 @@ export const DragDropMeasureReorders: Story = {
   },
 };
 
+export const DragDropMeasureFromHeaderReorders: Story = {
+  args: {
+    initialState: makeEditorState([
+      {
+        id: "measure-1",
+        title: "Intro",
+        notes: [{ id: "note-1", stringIndex: 0, position: 4, fret: 2 }],
+      },
+      {
+        id: "measure-2",
+        title: "Break",
+        notes: [{ id: "note-2", stringIndex: 1, position: 8, fret: 3 }],
+      },
+    ]),
+  },
+  play: async ({ canvasElement }) => {
+    const measuresBefore = canvasElement.querySelectorAll(".banjo-tab-measure");
+    const header = measuresBefore[0]?.querySelector(".banjo-tab-measure-header");
+    const targetMeasure = measuresBefore[1];
+
+    if (!(header instanceof HTMLElement) || !(targetMeasure instanceof HTMLElement)) {
+      throw new Error("Measure header did not render");
+    }
+
+    const startRect = header.getBoundingClientRect();
+    const endRect = targetMeasure.getBoundingClientRect();
+    const startPoint = {
+      clientX: startRect.right - 28,
+      clientY: startRect.top + startRect.height / 2,
+    };
+    const endPoint = {
+      clientX: endRect.left + endRect.width / 2,
+      clientY: endRect.top + endRect.height * 0.75,
+    };
+
+    fireEvent.pointerDown(header, {
+      ...startPoint,
+      button: 0,
+      pointerId: 4,
+      pointerType: "mouse",
+    });
+    fireEvent.pointerMove(header, {
+      ...endPoint,
+      button: 0,
+      pointerId: 4,
+      pointerType: "mouse",
+    });
+    fireEvent.pointerUp(header, {
+      ...endPoint,
+      button: 0,
+      pointerId: 4,
+      pointerType: "mouse",
+    });
+
+    const measuresAfter = canvasElement.querySelectorAll(".banjo-tab-measure");
+    await expect(within(measuresAfter[0] as HTMLElement).getByRole("button", { name: "Edit measure 1 title: Break" })).toBeInTheDocument();
+    await expect(within(measuresAfter[1] as HTMLElement).getByRole("button", { name: "Edit measure 2 title: Intro" })).toBeInTheDocument();
+  },
+};
+
 export const DragDropOnlyMeasureToDeleteClearsNotes: Story = {
   args: {
     initialState: makeEditorState([
@@ -367,7 +562,7 @@ export const DragDropOnlyMeasureToDeleteClearsNotes: Story = {
     ]),
   },
   play: async ({ canvas }) => {
-    const handle = canvas.getByRole("button", { name: "Drag measure 1" });
+    const handle = canvas.getByRole("button", { name: "Drag Measure 1" });
     const startRect = handle.getBoundingClientRect();
     const startPoint = {
       clientX: startRect.left + startRect.width / 2,
@@ -437,9 +632,47 @@ export const MobileLikeNarrowWidth: Story = {
   },
 };
 
+export const MobileNarrowArticulatedNotes: Story = {
+  args: {
+    initialState: makeEditorState([
+      {
+        id: "measure-1",
+        notes: [
+          { id: "note-1", stringIndex: 0, position: 1, fret: 2, articulation: { type: "hammer-on", targetFret: 4 } },
+          { id: "note-2", stringIndex: 2, position: 7, fret: 5, articulation: { type: "slide", targetFret: 2 } },
+          { id: "note-3", stringIndex: 4, position: 14, fret: 7, articulation: { type: "bend" } },
+        ],
+      },
+    ]),
+  },
+  parameters: {
+    viewport: {
+      defaultViewport: "mobile1",
+    },
+  },
+};
+
+function editorStateWithOpenPicker(fret: number): BanjoTabEditorState {
+  return {
+    ...makeEditorState([
+      {
+        id: "measure-1",
+        notes: [{ id: "note-1", stringIndex: 1, position: 5, fret }],
+      },
+    ]),
+    mode: {
+      type: "fret-picker",
+      location: { measureId: "measure-1", stringIndex: 1, position: 5 },
+      noteId: "note-1",
+      screenPoint: { x: 360, y: 210 },
+    },
+  };
+}
+
 function makeEditorState(
   measures: Array<{
     id: string;
+    title?: string;
     notes: BanjoTabEditorState["tab"]["measures"][number]["notes"];
   }>,
 ): BanjoTabEditorState {
@@ -449,6 +682,7 @@ function makeEditorState(
       tuning: DEFAULT_TUNING,
       measures: measures.map((measure) => ({
         id: measure.id,
+        ...(measure.title ? { title: measure.title } : {}),
         beats: 4,
         subdivision: 4,
         notes: measure.notes,

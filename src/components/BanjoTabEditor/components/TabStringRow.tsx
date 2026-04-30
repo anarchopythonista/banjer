@@ -11,8 +11,17 @@ type TabStringRowProps = {
   stringIndex: number;
   notes: TabNoteData[];
   mode: EditorMode;
-  onSlotPress: (location: NoteLocation, screenPoint: ScreenPoint) => void;
-  onNotePress: (note: TabNoteData, location: NoteLocation, screenPoint: ScreenPoint) => void;
+  onSlotPress: (
+    location: NoteLocation,
+    screenPoint: ScreenPoint,
+    returnFocusElement: HTMLElement,
+  ) => void;
+  onNotePress: (
+    note: TabNoteData,
+    location: NoteLocation,
+    screenPoint: ScreenPoint,
+    returnFocusElement: HTMLElement,
+  ) => void;
   dragApi: ReturnType<typeof usePointerNoteDrag>;
 };
 
@@ -35,6 +44,7 @@ export function TabStringRow({
         position,
       },
       getEventPoint(event),
+      event.currentTarget,
     );
   };
 

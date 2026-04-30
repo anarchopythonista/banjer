@@ -1,6 +1,7 @@
 import type { KeyboardEvent, MouseEvent, PointerEvent } from "react";
 import { SLOTS_PER_MEASURE } from "../constants";
 import { slotToPercent } from "../geometry";
+import { formatNoteLabel } from "../noteFormatting";
 import type { NoteLocation, TabNoteData } from "../types";
 
 type TabNoteProps = {
@@ -10,6 +11,7 @@ type TabNoteProps = {
     note: TabNoteData,
     location: NoteLocation,
     screenPoint: { x: number; y: number },
+    returnFocusElement: HTMLElement,
   ) => void;
   onNotePointerDown: (
     note: TabNoteData,
@@ -44,6 +46,7 @@ export function TabNote({
   shouldSuppressClick,
   isDragging,
 }: TabNoteProps) {
+  const noteLabel = formatNoteLabel(note);
   const location = {
     measureId,
     stringIndex: note.stringIndex,
@@ -56,7 +59,7 @@ export function TabNote({
       return;
     }
 
-    onNotePress(note, location, getEventPoint(event));
+    onNotePress(note, location, getEventPoint(event), event.currentTarget);
   };
 
   const handlePointerDown = (event: PointerEvent<HTMLButtonElement>) => {
@@ -88,7 +91,7 @@ export function TabNote({
       type="button"
       className="banjo-tab-note"
       style={{ left: `${slotToPercent(note.position, SLOTS_PER_MEASURE)}%` }}
-      aria-label={`Edit fret ${note.fret} on string ${note.stringIndex + 1}, slot ${note.position + 1}`}
+      aria-label={`Edit fret ${noteLabel} on string ${note.stringIndex + 1}, slot ${note.position + 1}`}
       data-dragging={isDragging || undefined}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
@@ -98,7 +101,7 @@ export function TabNote({
       onPointerCancel={onNotePointerCancel}
       onLostPointerCapture={onNoteLostPointerCapture}
     >
-      {note.fret}
+      {noteLabel}
     </button>
   );
 }

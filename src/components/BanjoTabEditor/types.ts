@@ -11,16 +11,24 @@ export type BanjoString = {
 
 export type TabMeasureData = {
   id: string;
+  title?: string;
   beats: number;
   subdivision: number;
   notes: TabNoteData[];
 };
+
+export type TabArticulation =
+  | { type: "hammer-on"; targetFret: number }
+  | { type: "pull-off"; targetFret: number }
+  | { type: "slide"; targetFret: number }
+  | { type: "bend"; amount?: "unspecified" | "half" | "full" };
 
 export type TabNoteData = {
   id: string;
   stringIndex: number;
   position: number;
   fret: number;
+  articulation?: TabArticulation;
 };
 
 export type NoteLocation = {

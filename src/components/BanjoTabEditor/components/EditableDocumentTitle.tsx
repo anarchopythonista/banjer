@@ -2,16 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 
 type EditableDocumentTitleProps = {
-  initialTitle?: string;
+  title: string;
+  onCommitTitle: (title: string) => void | Promise<void>;
 };
 
 const FALLBACK_TITLE = "Untitled";
 
 export function EditableDocumentTitle({
-  initialTitle = FALLBACK_TITLE,
+  title,
+  onCommitTitle,
 }: EditableDocumentTitleProps) {
-  const [title, setTitle] = useState(initialTitle);
-  const [draftTitle, setDraftTitle] = useState(initialTitle);
+  const [draftTitle, setDraftTitle] = useState(title);
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -29,9 +30,9 @@ export function EditableDocumentTitle({
 
   const applyDraftTitle = () => {
     const nextTitle = draftTitle.trim() || FALLBACK_TITLE;
-    setTitle(nextTitle);
     setDraftTitle(nextTitle);
     setIsEditing(false);
+    void onCommitTitle(nextTitle);
   };
 
   const cancelEditing = () => {
@@ -52,7 +53,7 @@ export function EditableDocumentTitle({
   };
 
   const handleBlur = () => {
-    applyDraftTitle();
+    cancelEditing();
   };
 
   return (

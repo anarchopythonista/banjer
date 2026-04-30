@@ -1,5 +1,6 @@
 import type { KeyboardEvent, PointerEvent } from "react";
 import type { BanjoString, EditorMode, NoteLocation, ScreenPoint, TabMeasureData, TabNoteData } from "../types";
+import { EditableMeasureTitle } from "./EditableMeasureTitle";
 import { TabStringRow } from "./TabStringRow";
 import type { usePointerNoteDrag } from "../hooks/usePointerNoteDrag";
 import type { usePointerMeasureDrag } from "../hooks/usePointerMeasureDrag";
@@ -10,10 +11,20 @@ type TabMeasureProps = {
   measureIndex: number;
   tuning: BanjoString[];
   mode: EditorMode;
-  onSlotPress: (location: NoteLocation, screenPoint: ScreenPoint) => void;
-  onNotePress: (note: TabNoteData, location: NoteLocation, screenPoint: ScreenPoint) => void;
+  onSlotPress: (
+    location: NoteLocation,
+    screenPoint: ScreenPoint,
+    returnFocusElement: HTMLElement,
+  ) => void;
+  onNotePress: (
+    note: TabNoteData,
+    location: NoteLocation,
+    screenPoint: ScreenPoint,
+    returnFocusElement: HTMLElement,
+  ) => void;
   dragApi: ReturnType<typeof usePointerNoteDrag>;
   measureDragApi: ReturnType<typeof usePointerMeasureDrag>;
+  onRenameMeasure: (measureId: string, title: string) => void;
 };
 
 export function TabMeasure({
@@ -26,9 +37,25 @@ export function TabMeasure({
   onNotePress,
   dragApi,
   measureDragApi,
+  onRenameMeasure,
 }: TabMeasureProps) {
-  const handleMeasurePointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+  const fallbackTitle = `Measure ${measureNumber}`;
+
+  const startMeasureDrag = (event: PointerEvent<HTMLElement>) => {
     measureDragApi.measurePointerHandlers.onPointerDown(measure.id, measureIndex, event);
+  };
+
+  const handleHeaderPointerDown = (event: PointerEvent<HTMLElement>) => {
+    if ((event.target as HTMLElement).closest("[data-measure-header-interactive]")) {
+      return;
+    }
+
+    startMeasureDrag(event);
+  };
+
+  const handleMeasureGripPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    startMeasureDrag(event);
   };
   const handleMeasureKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key === "ArrowUp") {
@@ -58,21 +85,34 @@ export function TabMeasure({
       }
       aria-label={`Measure ${measureNumber}`}
     >
-      <div className="banjo-tab-measure-header">
+      <div
+        className="banjo-tab-measure-header"
+        aria-label={`Drag ${measure.title || fallbackTitle}`}
+        onPointerDown={handleHeaderPointerDown}
+        onPointerMove={measureDragApi.measurePointerHandlers.onPointerMove}
+        onPointerUp={measureDragApi.measurePointerHandlers.onPointerUp}
+        onPointerCancel={measureDragApi.measurePointerHandlers.onPointerCancel}
+        onLostPointerCapture={measureDragApi.measurePointerHandlers.onLostPointerCapture}
+      >
         <button
           type="button"
           className="banjo-tab-measure-handle"
-          aria-label={`Drag measure ${measureNumber}`}
+          aria-label={`Drag ${measure.title || fallbackTitle}`}
           onKeyDown={handleMeasureKeyDown}
-          onPointerDown={handleMeasurePointerDown}
+          onPointerDown={handleMeasureGripPointerDown}
           onPointerMove={measureDragApi.measurePointerHandlers.onPointerMove}
           onPointerUp={measureDragApi.measurePointerHandlers.onPointerUp}
           onPointerCancel={measureDragApi.measurePointerHandlers.onPointerCancel}
           onLostPointerCapture={measureDragApi.measurePointerHandlers.onLostPointerCapture}
         >
           <span aria-hidden="true">::</span>
-          <span>Measure {measureNumber}</span>
         </button>
+        <EditableMeasureTitle
+          title={measure.title ?? ""}
+          fallbackTitle={fallbackTitle}
+          measureNumber={measureNumber}
+          onCommitTitle={(title) => onRenameMeasure(measure.id, title)}
+        />
         <span>{measure.beats}/{measure.subdivision}</span>
       </div>
       <div className="banjo-tab-measure-grid" role="grid" aria-label={`Tablature measure ${measureNumber}`}>
