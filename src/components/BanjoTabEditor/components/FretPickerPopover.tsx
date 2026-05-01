@@ -238,9 +238,6 @@ export function FretPickerPopover({
           x
         </button>
       </div>
-      {phase.type !== "plain" && (
-        <p className="banjo-tab-fret-picker-source">Source fret {sourceFret}</p>
-      )}
       <div
         className="banjo-tab-fret-grid"
         role="group"

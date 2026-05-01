@@ -608,12 +608,12 @@
   text-transform: uppercase;
 }
 
-.banjo-tab-fret-picker-source {
+/* .banjo-tab-fret-picker-source {
   margin: -2px 0 10px;
   color: var(--tab-accent);
   font-size: 0.9rem;
   font-weight: 750;
-}
+} */
 
 .banjo-tab-fret-picker-heading button {
   display: inline-grid;
