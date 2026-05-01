@@ -8,4 +8,11 @@ describe("BanjoTabEditor mobile drag CSS", () => {
     expect(css).toContain("-webkit-user-select: none;");
     expect(css).toContain("-webkit-touch-callout: none;");
   });
+
+  it("prevents iOS selection and callouts in the fret picker", () => {
+    expect(css).toContain(".banjo-tab-fret-picker,\n.banjo-tab-fret-picker *");
+    expect(css).toContain(".banjo-tab-fret-picker,\n.banjo-tab-fret-picker * {\n  -webkit-touch-callout: none;");
+    expect(css).toContain(".banjo-tab-fret-picker,\n.banjo-tab-fret-picker * {\n  -webkit-touch-callout: none;\n  -webkit-user-select: none;");
+    expect(css).toContain(".banjo-tab-fret-picker,\n.banjo-tab-fret-picker * {\n  -webkit-touch-callout: none;\n  -webkit-user-select: none;\n  user-select: none;");
+  });
 });

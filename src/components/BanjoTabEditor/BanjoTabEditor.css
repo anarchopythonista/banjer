@@ -589,6 +589,13 @@
   transform: translate(-50%, 0);
 }
 
+.banjo-tab-fret-picker,
+.banjo-tab-fret-picker * {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .banjo-tab-fret-picker-heading {
   display: flex;
   align-items: center;

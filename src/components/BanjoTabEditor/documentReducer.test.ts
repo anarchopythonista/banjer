@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createInitialTab } from "./constants";
 import {
+  createDraftDocument,
   createDraftDocumentState,
   documentReducer,
   isUnsavedMeaningfulDraft,
@@ -25,6 +26,20 @@ describe("documentReducer", () => {
     });
     expect(state.savedTabs).toEqual([]);
     expect(state.storageStatus).toBe("idle");
+  });
+
+  it("starts each fresh draft at Measure 1", () => {
+    const firstDraft = createDraftDocument();
+    const secondDraft = createDraftDocument();
+
+    expect(firstDraft.tab.measures[0]).toMatchObject({
+      id: "measure-1",
+      title: "Measure 1",
+    });
+    expect(secondDraft.tab.measures[0]).toMatchObject({
+      id: "measure-1",
+      title: "Measure 1",
+    });
   });
 
   it("commits a title on an unsaved draft without creating an id in the reducer", () => {

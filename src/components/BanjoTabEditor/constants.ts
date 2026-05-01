@@ -13,15 +13,7 @@ export const DEFAULT_TUNING: BanjoString[] = [
   { id: "string-5", label: "g", order: 5 },
 ];
 
-let nextMeasureNumber = 1;
 let nextNoteNumber = 1;
-
-export function createMeasure(): TabMeasureData {
-  const id = `measure-${nextMeasureNumber}`;
-  nextMeasureNumber += 1;
-
-  return createMeasureWithId(id);
-}
 
 export function createMeasureWithId(id: string): TabMeasureData {
   return {
@@ -42,7 +34,7 @@ export function createNoteId(): string {
 export function createInitialTab() {
   return {
     tuning: DEFAULT_TUNING,
-    measures: [createMeasure()],
+    measures: [createMeasureWithId("measure-1")],
   };
 }
 
