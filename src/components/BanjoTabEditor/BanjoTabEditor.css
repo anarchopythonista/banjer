@@ -199,16 +199,19 @@
 }
 
 .banjo-tab-document-menu-popover {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  position: fixed;
   z-index: 20;
-  min-width: min(260px, calc(100vw - 40px));
+  width: min(320px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
   padding: 6px;
   border: 1px solid var(--tab-popover-border);
   border-radius: 8px;
   background: var(--tab-paper);
   box-shadow: var(--tab-popover-shadow);
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  visibility: hidden;
 }
 
 .banjo-tab-document-menu-item {
