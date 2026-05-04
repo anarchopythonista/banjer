@@ -163,6 +163,10 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
         return;
       }
 
+      if (event.defaultPrevented) {
+        return;
+      }
+
       const quickFretTarget = quickFretTargetRef.current;
 
       if (
@@ -176,6 +180,21 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
           location: quickFretTarget,
           fret: Number(event.key),
         });
+        return;
+      }
+
+      if (
+        state.mode.type === "idle" &&
+        quickFretTarget &&
+        isDeleteShortcut(event)
+      ) {
+        const note = findNoteAtLocation(state.tab.measures, quickFretTarget);
+
+        if (note) {
+          event.preventDefault();
+          dispatch({ type: "DELETE_NOTE", noteId: note.id });
+        }
+
         return;
       }
 
@@ -204,7 +223,7 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [canRedo, canUndo, dispatch, redoTabChange, state.mode.type, undoTabChange]);
+  }, [canRedo, canUndo, dispatch, redoTabChange, state.mode.type, state.tab.measures, undoTabChange]);
 
   return (
     <main className="banjo-tab-editor" aria-labelledby="banjo-tab-editor-title">
@@ -302,6 +321,19 @@ function findNoteById(notes: TabNoteData[], noteId?: string) {
   return noteId ? notes.find((note) => note.id === noteId) : undefined;
 }
 
+function findNoteAtLocation(
+  measures: BanjoTabEditorState["tab"]["measures"],
+  location: NoteLocation,
+) {
+  return measures
+    .find((measure) => measure.id === location.measureId)
+    ?.notes.find(
+      (note) =>
+        note.stringIndex === location.stringIndex &&
+        note.position === location.position,
+    );
+}
+
 function restorePickerFocus(ref: { current: HTMLElement | null }) {
   const element = ref.current;
   ref.current = null;
@@ -330,6 +362,15 @@ function isSingleDigitShortcut(event: KeyboardEvent): boolean {
     event.key.length === 1 &&
     event.key >= "0" &&
     event.key <= "9"
+  );
+}
+
+function isDeleteShortcut(event: KeyboardEvent): boolean {
+  return (
+    !event.altKey &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    (event.key === "Backspace" || event.key === "Delete")
   );
 }
 

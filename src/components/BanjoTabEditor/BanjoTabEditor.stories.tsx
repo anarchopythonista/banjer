@@ -394,6 +394,36 @@ export const QuickFretEntryInteraction: Story = {
   },
 };
 
+export const QuickDeleteHoveredNoteInteraction: Story = {
+  args: {
+    initialState: makeEditorState([
+      {
+        id: "measure-1",
+        notes: [
+          { id: "note-1", stringIndex: 1, position: 2, fret: 7 },
+          { id: "note-2", stringIndex: 2, position: 3, fret: 4 },
+        ],
+      },
+    ]),
+  },
+  play: async ({ canvas }) => {
+    const hoveredNote = canvas.getByRole("button", { name: "Edit fret 7 on string 2, slot 3" });
+
+    fireEvent.pointerOver(hoveredNote, {
+      pointerType: "mouse",
+    });
+    fireEvent.keyDown(window, { key: "Backspace" });
+
+    await expect(canvas.queryByRole("button", { name: "Edit fret 7 on string 2, slot 3" })).not.toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Edit fret 4 on string 3, slot 4" })).toBeInTheDocument();
+
+    canvas.getByRole("button", { name: "Edit fret 4 on string 3, slot 4" }).focus();
+    fireEvent.keyDown(window, { key: "Delete" });
+
+    await expect(canvas.queryByRole("button", { name: "Edit fret 4 on string 3, slot 4" })).not.toBeInTheDocument();
+  },
+};
+
 export const DraggingNoteVisualState: Story = {
   args: {
     initialState: {
