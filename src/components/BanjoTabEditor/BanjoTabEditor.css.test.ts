@@ -16,3 +16,17 @@ describe("BanjoTabEditor mobile drag CSS", () => {
     expect(css).toContain(".banjo-tab-fret-picker,\n.banjo-tab-fret-picker * {\n  -webkit-touch-callout: none;\n  -webkit-user-select: none;\n  user-select: none;");
   });
 });
+
+describe("BanjoTabEditor mobile header CSS", () => {
+  it("keeps long document titles on one line with truncation", () => {
+    expect(css).toContain(".banjo-tab-document-title-button,\n.banjo-tab-document-title-input {\n  overflow: hidden;");
+    expect(css).toContain(".banjo-tab-document-title-button,\n.banjo-tab-document-title-input {\n  overflow: hidden;\n  text-overflow: ellipsis;");
+    expect(css).toContain(".banjo-tab-document-title-button,\n.banjo-tab-document-title-input {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;");
+  });
+
+  it("moves editor header actions into a fixed mobile toolbar", () => {
+    expect(css).toContain(".banjo-tab-header-actions {\n    position: fixed;");
+    expect(css).toContain("bottom: calc(16px + env(safe-area-inset-bottom));");
+    expect(css).toContain("padding-bottom: calc(104px + env(safe-area-inset-bottom));");
+  });
+});

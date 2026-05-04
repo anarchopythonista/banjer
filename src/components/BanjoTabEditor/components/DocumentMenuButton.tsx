@@ -1,7 +1,6 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 import type { SavedTabSummary } from "../types";
-import { getDocumentMenuPopoverPosition } from "./documentMenuPosition";
 
 type DocumentDragApi = {
   documentPointerHandlers: {
@@ -37,52 +36,6 @@ export function DocumentMenuButton({
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const updatePopoverPosition = () => {
-      const triggerRect = triggerRef.current?.getBoundingClientRect();
-      const popover = popoverRef.current;
-
-      if (!triggerRect || !popover) {
-        return;
-      }
-
-      const position = getDocumentMenuPopoverPosition({
-        triggerRect: {
-          right: triggerRect.right,
-          bottom: triggerRect.bottom,
-        },
-        viewport: {
-          width: window.innerWidth,
-          height: window.innerHeight,
-        },
-      });
-
-      popover.style.left = `${position.left}px`;
-      popover.style.top = `${position.top}px`;
-      popover.style.width = `${position.width}px`;
-      popover.style.maxHeight = `${position.maxHeight}px`;
-      popover.style.visibility = "visible";
-    };
-
-    updatePopoverPosition();
-    window.addEventListener("resize", updatePopoverPosition);
-    window.addEventListener("scroll", updatePopoverPosition, true);
-    window.visualViewport?.addEventListener("resize", updatePopoverPosition);
-    window.visualViewport?.addEventListener("scroll", updatePopoverPosition);
-
-    return () => {
-      window.removeEventListener("resize", updatePopoverPosition);
-      window.removeEventListener("scroll", updatePopoverPosition, true);
-      window.visualViewport?.removeEventListener("resize", updatePopoverPosition);
-      window.visualViewport?.removeEventListener("scroll", updatePopoverPosition);
-    };
-  }, [isOpen, savedTabs.length]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -194,7 +147,6 @@ export function DocumentMenuButton({
       </button>
       {isOpen && (
         <div
-          ref={popoverRef}
           id={menuId}
           className="banjo-tab-document-menu-popover"
           role="menu"

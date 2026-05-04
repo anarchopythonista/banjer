@@ -697,6 +697,39 @@ export const MobileLikeNarrowWidth: Story = {
   },
 };
 
+export const MobileLongTitleFloatingControls: Story = {
+  args: {
+    initialState: makeEditorState([{ id: "measure-1", notes: [] }]),
+  },
+  parameters: {
+    viewport: {
+      defaultViewport: "mobile1",
+    },
+  },
+  play: async ({ canvas, canvasElement }) => {
+    const longTitle = "Foggy Mountain Breakdown melodic backup arrangement";
+
+    await userEvent.click(canvas.getByRole("button", { name: "Edit title: Untitled" }));
+    const titleInput = canvas.getByLabelText("Edit title");
+    await userEvent.clear(titleInput);
+    await userEvent.type(titleInput, `${longTitle}{Enter}`);
+
+    const titleButton = await canvas.findByRole("button", { name: `Edit title: ${longTitle}` });
+    const headerActions = canvasElement.querySelector(".banjo-tab-header-actions");
+
+    if (!(headerActions instanceof HTMLElement)) {
+      throw new Error("Header actions did not render");
+    }
+
+    await expect(getComputedStyle(titleButton).whiteSpace).toBe("nowrap");
+    await expect(getComputedStyle(titleButton).textOverflow).toBe("ellipsis");
+    await expect(getComputedStyle(headerActions).position).toBe("fixed");
+
+    await userEvent.click(canvas.getByLabelText("Add measure"));
+    await expect(canvas.getByLabelText("Measure 2")).toBeInTheDocument();
+  },
+};
+
 export const MobileNarrowArticulatedNotes: Story = {
   args: {
     initialState: makeEditorState([

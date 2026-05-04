@@ -135,6 +135,13 @@
   display: block;
 }
 
+.banjo-tab-document-title-button,
+.banjo-tab-document-title-input {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .banjo-tab-document-title-button {
   cursor: text;
 }
@@ -199,7 +206,9 @@
 }
 
 .banjo-tab-document-menu-popover {
-  position: fixed;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
   z-index: 20;
   width: min(320px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);
@@ -211,7 +220,6 @@
   box-sizing: border-box;
   overflow-y: auto;
   overscroll-behavior: contain;
-  visibility: hidden;
 }
 
 .banjo-tab-document-menu-item {
@@ -836,14 +844,21 @@
 @media (max-width: 640px) {
   .banjo-tab-editor {
     padding: 16px;
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
   }
 
   .banjo-tab-editor-header {
+    display: block;
     align-items: center;
+    margin-bottom: 18px;
   }
 
   .banjo-tab-editor h1 {
     font-size: 2rem;
+  }
+
+  .banjo-tab-document-controls {
+    width: 100%;
   }
 
   .banjo-tab-document-menu-button {
@@ -851,7 +866,16 @@
   }
 
   .banjo-tab-header-actions {
+    position: fixed;
+    right: calc(16px + env(safe-area-inset-right));
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    z-index: 18;
     gap: 6px;
+    padding: 6px;
+    border: 1px solid var(--tab-popover-border);
+    border-radius: 8px;
+    background: var(--tab-paper);
+    box-shadow: var(--tab-floating-shadow);
   }
 
   .banjo-tab-history-button {

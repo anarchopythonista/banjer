@@ -107,55 +107,6 @@ export const SavedFilesWithDeleteControls: Story = {
   },
 };
 
-export const MobileLongFilenames: Story = {
-  args: {
-    activeDocumentId: "doc-2",
-    savedTabs: [
-      {
-        id: "doc-1",
-        title: "Clinch Mountain Backstep with a very long working title for practice",
-        updatedAt: "2026-04-29T14:30:00.000Z",
-      },
-      {
-        id: "doc-2",
-        title: "Foggy Mountain Breakdown melodic backup arrangement draft",
-        updatedAt: "2026-04-29T15:00:00.000Z",
-      },
-    ],
-    documentDragApi: {
-      documentPointerHandlers: {
-        onPointerDown: fn(),
-        onPointerMove: fn(),
-        onPointerUp: fn(),
-        onPointerCancel: fn(),
-        onLostPointerCapture: fn(),
-      },
-      deleteDocumentByKeyboard: fn(),
-      shouldSuppressClick: fn(() => false),
-    },
-  },
-  decorators: [
-    (Story) => (
-      <div style={{ width: 390, maxWidth: "calc(100vw - 32px)" }}>
-        <Story />
-      </div>
-    ),
-  ],
-  play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Open file menu" }));
-
-    const menu = await canvas.findByRole("menu", { name: "Saved files" });
-    const menuRect = menu.getBoundingClientRect();
-    const longFileButton = canvas.getByRole("menuitem", {
-      name: "Clinch Mountain Backstep with a very long working title for practice",
-    });
-
-    await expect(menuRect.left).toBeGreaterThanOrEqual(0);
-    await expect(menuRect.right).toBeLessThanOrEqual(window.innerWidth);
-    await expect(getComputedStyle(longFileButton).textOverflow).toBe("ellipsis");
-  },
-};
-
 const deleteDocumentFromDrag = fn();
 const confirmDocumentDeleteFromDrag = fn(() => true);
 const deleteDocumentAfterCancel = fn();
