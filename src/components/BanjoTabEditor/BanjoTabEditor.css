@@ -113,22 +113,6 @@
   flex: 1 1 auto;
 }
 
-.banjo-tab-document-title-form {
-  margin: 0;
-}
-
-.banjo-tab-document-title-submit {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  border: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
 .banjo-tab-document-title-button,
 .banjo-tab-document-title-input {
   width: 100%;

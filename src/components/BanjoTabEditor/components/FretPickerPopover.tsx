@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { KeyboardEvent, PointerEvent } from "react";
+import type {
+  CSSProperties,
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
 import { containPopoverPosition } from "../geometry";
 import type { EditorMode, TabArticulation, TabNoteData } from "../types";
 
@@ -22,24 +26,22 @@ type PickerPhase =
   | { type: "articulation-menu"; sourceFret: number }
   | { type: "target"; sourceFret: number; articulation: TargetedArticulationType };
 
+type PopoverPosition = {
+  left: number;
+  top: number;
+};
+
+type FretPickerStyle = CSSProperties & {
+  "--fret-picker-max-width": string;
+  "--fret-picker-margin": string;
+};
+
 export function FretPickerPopover({
   mode,
   currentNote,
   onSelectFret,
   onClose,
 }: FretPickerPopoverProps) {
-  const popoverRef = useRef<HTMLDivElement>(null);
-  const selectedButtonRef = useRef<HTMLButtonElement>(null);
-  const firstButtonRef = useRef<HTMLButtonElement>(null);
-  const firstArticulationButtonRef = useRef<HTMLButtonElement>(null);
-  const firstEnabledTargetButtonRef = useRef<HTMLButtonElement>(null);
-  const fretButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const longPressTimerRef = useRef<number | null>(null);
-  const longPressActivatedRef = useRef(false);
-  const currentFret = currentNote?.fret;
-  const [phase, setPhase] = useState<PickerPhase>({ type: "plain" });
-  const [highlightedFret, setHighlightedFret] = useState(currentFret ?? 0);
-
   const position = useMemo(() => {
     if (mode.type !== "fret-picker") {
       return null;
@@ -62,42 +64,63 @@ export function FretPickerPopover({
     };
   }, [mode]);
 
+  if (mode.type !== "fret-picker" || !position) {
+    return null;
+  }
+
+  const initialFret = currentNote?.fret ?? 0;
+  const pickerKey = [
+    mode.location.measureId,
+    mode.location.stringIndex,
+    mode.location.position,
+    mode.noteId ?? "new-note",
+    initialFret,
+  ].join(":");
+
+  return (
+    <FretPickerPopoverContent
+      key={pickerKey}
+      currentNote={currentNote}
+      initialFret={initialFret}
+      position={position}
+      onSelectFret={onSelectFret}
+      onClose={onClose}
+    />
+  );
+}
+
+type FretPickerPopoverContentProps = {
+  currentNote?: TabNoteData;
+  initialFret: number;
+  position: PopoverPosition;
+  onSelectFret: (fret: number, articulation?: TabArticulation) => void;
+  onClose: () => void;
+};
+
+function FretPickerPopoverContent({
+  currentNote,
+  initialFret,
+  position,
+  onSelectFret,
+  onClose,
+}: FretPickerPopoverContentProps) {
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const fretButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressActivatedRef = useRef(false);
+  const currentFret = currentNote?.fret;
+  const [phase, setPhase] = useState<PickerPhase>({ type: "plain" });
+  const [highlightedFret, setHighlightedFret] = useState(initialFret);
+
   useEffect(() => {
-    if (mode.type !== "fret-picker") {
-      return;
-    }
+    const focusFrame = window.requestAnimationFrame(() => {
+      getInitialFocusTarget(popoverRef.current, phase, initialFret)?.focus();
+    });
 
-    setPhase({ type: "plain" });
-    setHighlightedFret(currentFret ?? 0);
-    longPressActivatedRef.current = false;
-    clearLongPressTimer(longPressTimerRef);
-  }, [currentFret, mode]);
+    return () => window.cancelAnimationFrame(focusFrame);
+  }, [initialFret, phase]);
 
   useEffect(() => {
-    if (mode.type !== "fret-picker") {
-      return;
-    }
-
-    window.setTimeout(() => {
-      if (phase.type === "articulation-menu") {
-        firstArticulationButtonRef.current?.focus();
-        return;
-      }
-
-      if (phase.type === "target") {
-        firstEnabledTargetButtonRef.current?.focus();
-        return;
-      }
-
-      (selectedButtonRef.current ?? firstButtonRef.current)?.focus();
-    }, 0);
-  }, [mode, phase]);
-
-  useEffect(() => {
-    if (mode.type !== "fret-picker") {
-      return;
-    }
-
     const handlePointerDown = (event: PointerEvent) => {
       if (!popoverRef.current?.contains(event.target as Node)) {
         onClose();
@@ -118,16 +141,12 @@ export function FretPickerPopover({
       document.removeEventListener("keydown", handleKeyDown);
       clearLongPressTimer(longPressTimerRef);
     };
-  }, [mode, onClose]);
-
-  if (mode.type !== "fret-picker" || !position) {
-    return null;
-  }
+  }, [onClose]);
 
   const label = getDialogLabel(phase, Boolean(currentNote));
   const sourceFret = phase.type === "plain" ? highlightedFret : phase.sourceFret;
   const enabledFrets = getEnabledFrets(phase);
-  const handleFretGridKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+  const handleFretGridKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (!["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
       return;
     }
@@ -197,7 +216,7 @@ export function FretPickerPopover({
     onSelectFret(fret);
   };
 
-  const handleFretPointerDown = (fret: number, event: PointerEvent<HTMLButtonElement>) => {
+  const handleFretPointerDown = (fret: number, event: ReactPointerEvent<HTMLButtonElement>) => {
     if (event.button !== 0) {
       return;
     }
@@ -214,20 +233,18 @@ export function FretPickerPopover({
     clearLongPressTimer(longPressTimerRef);
   };
 
-  selectedButtonRef.current = null;
-  firstButtonRef.current = null;
-  firstEnabledTargetButtonRef.current = null;
+  const popoverStyle: FretPickerStyle = {
+    left: position.left,
+    top: position.top,
+    "--fret-picker-max-width": `${POPOVER_MAX_WIDTH}px`,
+    "--fret-picker-margin": `${POPOVER_MARGIN}px`,
+  };
 
   return (
     <div
       ref={popoverRef}
       className="banjo-tab-fret-picker"
-      style={{
-        left: position.left,
-        top: position.top,
-        "--fret-picker-max-width": `${POPOVER_MAX_WIDTH}px`,
-        "--fret-picker-margin": `${POPOVER_MARGIN}px`,
-      }}
+      style={popoverStyle}
       role="dialog"
       aria-modal="false"
       aria-label={label}
@@ -253,18 +270,10 @@ export function FretPickerPopover({
               key={fret}
               ref={(button) => {
                 fretButtonRefs.current[fret] = button;
-                if (fret === currentFret && phase.type === "plain") {
-                  selectedButtonRef.current = button;
-                }
-                if (fret === 0) {
-                  firstButtonRef.current = button;
-                }
-                if (isAllowed && phase.type === "target" && !firstEnabledTargetButtonRef.current) {
-                  firstEnabledTargetButtonRef.current = button;
-                }
               }}
               type="button"
               className="banjo-tab-fret-option"
+              data-fret={fret}
               aria-label={getFretLabel(fret, phase, isAllowed)}
               aria-pressed={fret === currentFret || isSource}
               disabled={!isAllowed}
@@ -293,7 +302,7 @@ export function FretPickerPopover({
       {phase.type === "articulation-menu" && (
         <div className="banjo-tab-articulation-actions" aria-label="Articulations">
           <button
-            ref={firstArticulationButtonRef}
+            data-fret-picker-articulation-button="true"
             type="button"
             onClick={() => handleArticulation("hammer-on")}
           >
@@ -322,6 +331,35 @@ function clearLongPressTimer(ref: { current: number | null }) {
     window.clearTimeout(ref.current);
     ref.current = null;
   }
+}
+
+function getInitialFocusTarget(
+  popover: HTMLDivElement | null,
+  phase: PickerPhase,
+  currentFret: number,
+) {
+  if (!popover) {
+    return null;
+  }
+
+  if (phase.type === "articulation-menu") {
+    return popover.querySelector<HTMLButtonElement>(
+      "[data-fret-picker-articulation-button]",
+    );
+  }
+
+  if (phase.type === "target") {
+    return popover.querySelector<HTMLButtonElement>(
+      ".banjo-tab-fret-option:not(:disabled)",
+    );
+  }
+
+  return (
+    popover.querySelector<HTMLButtonElement>(
+      `.banjo-tab-fret-option[data-fret="${currentFret}"]`,
+    ) ??
+    popover.querySelector<HTMLButtonElement>(".banjo-tab-fret-option")
+  );
 }
 
 function getDialogLabel(phase: PickerPhase, hasCurrentNote: boolean) {

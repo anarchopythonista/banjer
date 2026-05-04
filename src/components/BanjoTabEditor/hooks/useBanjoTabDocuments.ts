@@ -5,6 +5,7 @@ import {
   isUnsavedMeaningfulDraft,
   normalizeDocumentTitle,
 } from "../documentReducer";
+import { createDocumentId } from "../documentId";
 import {
   getMostRecentTab,
   getSavedTab,
@@ -150,7 +151,7 @@ export function useBanjoTabDocuments(
       const documentToSave: BanjoTabDocument =
         activeDocument.id === null
           ? {
-              id: crypto.randomUUID(),
+              id: createDocumentId(),
               title: normalizedTitle,
               tab: sessionStateRef.current.editorState.tab,
               createdAt: now,

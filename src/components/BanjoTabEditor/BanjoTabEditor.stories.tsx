@@ -45,60 +45,21 @@ export const RenameTitleInteraction: Story = {
   },
 };
 
-export const RenameTitleSubmitInteraction: Story = {
+export const RenameTitleOutsideTapCancelsInteraction: Story = {
   args: {
     initialState: makeEditorState([{ id: "measure-1", notes: [] }]),
   },
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Edit title: Untitled" }));
     const titleInput = canvas.getByLabelText("Edit title");
+    const addMeasureButton = canvas.getByLabelText("Add measure");
     await userEvent.clear(titleInput);
     await userEvent.type(titleInput, "Test");
 
-    const titleForm = titleInput.closest("form");
-    await expect(titleForm).not.toBeNull();
-    fireEvent.submit(titleForm!);
+    await userEvent.click(addMeasureButton);
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
 
-    await expect(canvas.getByRole("button", { name: "Edit title: Test" })).toBeInTheDocument();
-    await userEvent.click(canvas.getByRole("button", { name: "Open file menu" }));
-    await expect(canvas.getAllByRole("menuitem", { name: "Test" }).length).toBeGreaterThan(0);
-  },
-};
-
-export const RenameTitleBlurThenSubmitInteraction: Story = {
-  args: {
-    initialState: makeEditorState([{ id: "measure-1", notes: [] }]),
-  },
-  play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Edit title: Untitled" }));
-    const titleInput = canvas.getByLabelText("Edit title");
-    const titleForm = titleInput.closest("form");
-
-    await expect(titleForm).not.toBeNull();
-    await userEvent.clear(titleInput);
-    await userEvent.type(titleInput, "Test");
-
-    fireEvent.blur(titleInput);
-    fireEvent.submit(titleForm!);
-
-    await expect(canvas.getByRole("button", { name: "Edit title: Test" })).toBeInTheDocument();
-  },
-};
-
-export const RenameTitleIOSReturnInteraction: Story = {
-  args: {
-    initialState: makeEditorState([{ id: "measure-1", notes: [] }]),
-  },
-  play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Edit title: Untitled" }));
-    const titleInput = canvas.getByLabelText<HTMLInputElement>("Edit title");
-    const titleForm = titleInput.closest("form");
-
-    await expect(titleForm).not.toBeNull();
-    titleInput.value = "Test";
-    fireEvent.submit(titleForm!);
-
-    await expect(canvas.getByRole("button", { name: "Edit title: Test" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Edit title: Untitled" })).toBeInTheDocument();
   },
 };
 
