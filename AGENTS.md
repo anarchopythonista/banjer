@@ -78,3 +78,60 @@ When working on UI components, always use the `banjer-sb-mcp` MCP tools to acces
 - Check your work by running `run-story-tests`.
 
 Remember: A story name might not reflect the property name correctly, so always verify properties through documentation or example stories before using them.
+
+## Token Efficiency Guidelines
+
+Use tokens deliberately. Aim to preserve solution quality while avoiding unnecessary exploration, repetition, and verbosity.
+
+### General Principles
+
+- Prefer targeted investigation over broad codebase scanning.
+- Read only the files needed to understand or change the relevant behavior.
+- Avoid restating large chunks of code unless the exact code is being changed or reviewed.
+- Do not summarize obvious file contents after reading them.
+- Do not repeat the user's request back unless clarification is genuinely needed.
+- Keep status updates concise and focused on findings, decisions, or blockers.
+- Favor precise edits over large rewrites when the surrounding code is already sound.
+
+### Before Reading More Files
+
+Before opening additional files, ask:
+
+1. Is this file likely to affect the requested behavior?
+2. Did an import, reference, test, route, or error message point here?
+3. Will reading this file change the implementation plan?
+
+If not, avoid opening it.
+
+### Investigation Strategy
+
+Start from the most relevant entry point, such as:
+
+- the component, hook, route, API handler, or utility named in the request
+- the failing test or error trace
+- the file most directly responsible for the reported behavior
+
+Then follow references outward only as needed.
+
+### Editing Strategy
+
+When making changes:
+
+- Make the smallest coherent change that fully resolves the issue.
+- Preserve existing patterns unless they are clearly part of the problem.
+- Avoid opportunistic refactors unrelated to the task.
+- Do not rename, reorganize, or restyle code unless necessary.
+- Update tests only where they directly verify the requested behavior.
+
+### Response Style
+
+Final responses should be brief but complete:
+
+- State what changed.
+- Mention any tests or checks run.
+- Note any important caveats or follow-up risks.
+- Avoid long explanations unless the change is subtle or the user asked for detail.
+
+### Quality Bar
+
+Reducing token usage must not come at the expense of correctness. Do not skip necessary reasoning, tests, or code inspection just to be terse. Be concise, not careless.
