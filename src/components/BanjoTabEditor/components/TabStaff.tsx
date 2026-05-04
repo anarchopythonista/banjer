@@ -17,6 +17,8 @@ type TabStaffProps = {
     screenPoint: ScreenPoint,
     returnFocusElement: HTMLElement,
   ) => void;
+  onQuickFretTarget: (location: NoteLocation) => void;
+  onQuickFretTargetClear: (location: NoteLocation) => void;
   onRenameMeasure: (measureId: string, title: string) => void;
   dragApi: ReturnType<typeof usePointerNoteDrag>;
   measureDragApi: ReturnType<typeof usePointerMeasureDrag>;
@@ -27,6 +29,8 @@ export function TabStaff({
   mode,
   onSlotPress,
   onNotePress,
+  onQuickFretTarget,
+  onQuickFretTargetClear,
   onRenameMeasure,
   dragApi,
   measureDragApi,
@@ -46,6 +50,8 @@ export function TabStaff({
             mode={mode}
             onSlotPress={onSlotPress}
             onNotePress={onNotePress}
+            onQuickFretTarget={onQuickFretTarget}
+            onQuickFretTargetClear={onQuickFretTargetClear}
             onRenameMeasure={onRenameMeasure}
             dragApi={dragApi}
             measureDragApi={measureDragApi}

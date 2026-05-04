@@ -365,6 +365,35 @@ export const EditNoteInteraction: Story = {
   },
 };
 
+export const QuickFretEntryInteraction: Story = {
+  args: {
+    initialState: makeEditorState([{ id: "measure-1", notes: [] }]),
+  },
+  play: async ({ canvas }) => {
+    fireEvent.pointerOver(canvas.getByLabelText("Set string 2 slot 3"), {
+      pointerType: "mouse",
+    });
+    fireEvent.keyDown(window, { key: "7" });
+
+    await expect(canvas.getByRole("button", { name: "Edit fret 7 on string 2, slot 3" })).toBeInTheDocument();
+    await expect(canvas.queryByRole("dialog", { name: "Choose fret" })).not.toBeInTheDocument();
+
+    fireEvent.pointerOver(canvas.getByRole("button", { name: "Edit fret 7 on string 2, slot 3" }), {
+      pointerType: "mouse",
+    });
+    fireEvent.keyDown(window, { key: "9" });
+
+    await expect(canvas.getByRole("button", { name: "Edit fret 9 on string 2, slot 3" })).toBeInTheDocument();
+    await expect(canvas.queryByRole("dialog", { name: "Edit fret" })).not.toBeInTheDocument();
+
+    canvas.getByLabelText("Set string 3 slot 4").focus();
+    fireEvent.keyDown(window, { key: "4" });
+
+    await expect(canvas.getByRole("button", { name: "Edit fret 4 on string 3, slot 4" })).toBeInTheDocument();
+    await expect(canvas.queryByRole("dialog", { name: "Choose fret" })).not.toBeInTheDocument();
+  },
+};
+
 export const DraggingNoteVisualState: Story = {
   args: {
     initialState: {

@@ -22,6 +22,8 @@ type TabStringRowProps = {
     screenPoint: ScreenPoint,
     returnFocusElement: HTMLElement,
   ) => void;
+  onQuickFretTarget: (location: NoteLocation) => void;
+  onQuickFretTargetClear: (location: NoteLocation) => void;
   dragApi: ReturnType<typeof usePointerNoteDrag>;
 };
 
@@ -33,6 +35,8 @@ export function TabStringRow({
   mode,
   onSlotPress,
   onNotePress,
+  onQuickFretTarget,
+  onQuickFretTargetClear,
   dragApi,
 }: TabStringRowProps) {
   const handleSlotClick = (position: number) => (event: MouseEvent<HTMLButtonElement>) => {
@@ -47,6 +51,12 @@ export function TabStringRow({
       event.currentTarget,
     );
   };
+
+  const noteLocation = (position: number) => ({
+    measureId,
+    stringIndex,
+    position,
+  });
 
   return (
     <div className="banjo-tab-string-row" role="row">
@@ -67,6 +77,10 @@ export function TabStringRow({
               className="banjo-tab-slot-button"
               aria-label={`Set string ${string.order} slot ${index + 1}`}
               onClick={handleSlotClick(index)}
+              onPointerOver={() => onQuickFretTarget(noteLocation(index))}
+              onPointerOut={() => onQuickFretTargetClear(noteLocation(index))}
+              onFocus={() => onQuickFretTarget(noteLocation(index))}
+              onBlur={() => onQuickFretTargetClear(noteLocation(index))}
             />
           ))}
         </div>
@@ -81,6 +95,8 @@ export function TabStringRow({
             note={note}
             measureId={measureId}
             onNotePress={onNotePress}
+            onQuickFretTarget={onQuickFretTarget}
+            onQuickFretTargetClear={onQuickFretTargetClear}
             onNotePointerDown={dragApi.notePointerHandlers.onPointerDown}
             onNotePointerMove={dragApi.notePointerHandlers.onPointerMove}
             onNotePointerUp={dragApi.notePointerHandlers.onPointerUp}

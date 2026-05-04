@@ -13,6 +13,8 @@ type TabNoteProps = {
     screenPoint: { x: number; y: number },
     returnFocusElement: HTMLElement,
   ) => void;
+  onQuickFretTarget: (location: NoteLocation) => void;
+  onQuickFretTargetClear: (location: NoteLocation) => void;
   onNotePointerDown: (
     note: TabNoteData,
     location: NoteLocation,
@@ -36,6 +38,8 @@ export function TabNote({
   note,
   measureId,
   onNotePress,
+  onQuickFretTarget,
+  onQuickFretTargetClear,
   onNotePointerDown,
   onNotePointerMove,
   onNotePointerUp,
@@ -95,6 +99,10 @@ export function TabNote({
       data-dragging={isDragging || undefined}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
+      onPointerOver={() => onQuickFretTarget(location)}
+      onPointerOut={() => onQuickFretTargetClear(location)}
+      onFocus={() => onQuickFretTarget(location)}
+      onBlur={() => onQuickFretTargetClear(location)}
       onPointerDown={handlePointerDown}
       onPointerMove={onNotePointerMove}
       onPointerUp={onNotePointerUp}

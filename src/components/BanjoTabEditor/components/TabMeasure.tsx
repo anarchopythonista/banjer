@@ -23,6 +23,8 @@ type TabMeasureProps = {
     screenPoint: ScreenPoint,
     returnFocusElement: HTMLElement,
   ) => void;
+  onQuickFretTarget: (location: NoteLocation) => void;
+  onQuickFretTargetClear: (location: NoteLocation) => void;
   dragApi: ReturnType<typeof usePointerNoteDrag>;
   measureDragApi: ReturnType<typeof usePointerMeasureDrag>;
   onRenameMeasure: (measureId: string, title: string) => void;
@@ -36,6 +38,8 @@ export function TabMeasure({
   mode,
   onSlotPress,
   onNotePress,
+  onQuickFretTarget,
+  onQuickFretTargetClear,
   dragApi,
   measureDragApi,
   onRenameMeasure,
@@ -126,6 +130,8 @@ export function TabMeasure({
             mode={mode}
             onSlotPress={onSlotPress}
             onNotePress={onNotePress}
+            onQuickFretTarget={onQuickFretTarget}
+            onQuickFretTargetClear={onQuickFretTargetClear}
             dragApi={dragApi}
           />
         ))}

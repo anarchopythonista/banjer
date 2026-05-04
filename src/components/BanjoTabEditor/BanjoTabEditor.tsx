@@ -61,6 +61,7 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
       : undefined;
   const trashDropZoneState = getTrashDropZoneState(state.mode, documentDragApi.dragState);
   const pickerReturnFocusRef = useRef<HTMLElement | null>(null);
+  const quickFretTargetRef = useRef<NoteLocation | null>(null);
 
   const openFretPicker = (
     location: NoteLocation,
@@ -117,6 +118,16 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
     closeFretPicker();
   };
 
+  const handleQuickFretTargetClear = (location: NoteLocation) => {
+    if (locationsMatch(quickFretTargetRef.current, location)) {
+      quickFretTargetRef.current = null;
+    }
+  };
+
+  const handleQuickFretTarget = (location: NoteLocation) => {
+    quickFretTargetRef.current = location;
+  };
+
   const closeFretPicker = () => {
     dispatch({ type: "SET_EDITOR_MODE", mode: { type: "idle" } });
     restorePickerFocus(pickerReturnFocusRef);
@@ -148,7 +159,27 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (isEditableEventTarget(event.target) || !isUndoRedoShortcut(event)) {
+      if (isEditableEventTarget(event.target)) {
+        return;
+      }
+
+      const quickFretTarget = quickFretTargetRef.current;
+
+      if (
+        state.mode.type === "idle" &&
+        quickFretTarget &&
+        isSingleDigitShortcut(event)
+      ) {
+        event.preventDefault();
+        dispatch({
+          type: "ADD_OR_UPDATE_NOTE",
+          location: quickFretTarget,
+          fret: Number(event.key),
+        });
+        return;
+      }
+
+      if (!isUndoRedoShortcut(event)) {
         return;
       }
 
@@ -173,7 +204,7 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [canRedo, canUndo, redoTabChange, undoTabChange]);
+  }, [canRedo, canUndo, dispatch, redoTabChange, state.mode.type, undoTabChange]);
 
   return (
     <main className="banjo-tab-editor" aria-labelledby="banjo-tab-editor-title">
@@ -211,6 +242,8 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
         mode={state.mode}
         onSlotPress={handleSlotPress}
         onNotePress={handleNotePress}
+        onQuickFretTarget={handleQuickFretTarget}
+        onQuickFretTargetClear={handleQuickFretTargetClear}
         onRenameMeasure={handleRenameMeasure}
         dragApi={dragApi}
         measureDragApi={measureDragApi}
@@ -288,12 +321,33 @@ function isUndoRedoShortcut(event: KeyboardEvent): boolean {
   );
 }
 
+function isSingleDigitShortcut(event: KeyboardEvent): boolean {
+  return (
+    !event.repeat &&
+    !event.altKey &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    event.key.length === 1 &&
+    event.key >= "0" &&
+    event.key <= "9"
+  );
+}
+
 function isEditableEventTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
     return false;
   }
 
   return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
+}
+
+function locationsMatch(left: NoteLocation | null, right: NoteLocation): boolean {
+  return Boolean(
+    left &&
+      left.measureId === right.measureId &&
+      left.stringIndex === right.stringIndex &&
+      left.position === right.position,
+  );
 }
 
 function getTrashDropZoneState(
