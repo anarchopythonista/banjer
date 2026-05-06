@@ -153,7 +153,16 @@ export function TabMeasure({
         />
         <span>{measure.beats}/{measure.subdivision}</span>
       </div>
-      <div className="banjo-tab-measure-grid" role="grid" aria-label={`Tablature ${measureTitle}`}>
+      <div
+        className="banjo-tab-measure-grid"
+        role="grid"
+        aria-label={`Tablature ${measureTitle}`}
+        onPointerDown={selectionApi.selectionPointerHandlers.onPointerDown}
+        onPointerMove={selectionApi.selectionPointerHandlers.onPointerMove}
+        onPointerUp={selectionApi.selectionPointerHandlers.onPointerUp}
+        onPointerCancel={selectionApi.selectionPointerHandlers.onPointerCancel}
+        onLostPointerCapture={selectionApi.selectionPointerHandlers.onLostPointerCapture}
+      >
         {tuning.map((string, stringIndex) => (
           <TabStringRow
             key={string.id}

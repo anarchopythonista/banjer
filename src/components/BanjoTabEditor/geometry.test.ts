@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   containPopoverPosition,
   findMeasureDropIndexFromPoint,
+  findNearestNoteLocationFromPoint,
   findNoteLocationFromPoint,
   isPointInsideRect,
   slotSpanToPercentBounds,
@@ -79,6 +80,27 @@ describe("BanjoTabEditor geometry", () => {
     );
 
     expect(target).toBeNull();
+  });
+
+  it("maps a pointer point between string rows to the nearest string in the measure", () => {
+    const target = findNearestNoteLocationFromPoint(
+      { x: 155, y: 154 },
+      [
+        {
+          measureId: "measure-1",
+          stringIndex: 0,
+          rect: { left: 100, top: 100, width: 320, height: 44 },
+        },
+        {
+          measureId: "measure-1",
+          stringIndex: 1,
+          rect: { left: 100, top: 160, width: 320, height: 44 },
+        },
+      ],
+      16,
+    );
+
+    expect(target).toEqual({ measureId: "measure-1", stringIndex: 1, position: 2 });
   });
 
   it("detects whether a point is inside the trash drop zone", () => {

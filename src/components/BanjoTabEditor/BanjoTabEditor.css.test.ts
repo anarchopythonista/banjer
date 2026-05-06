@@ -37,6 +37,11 @@ describe("BanjoTabEditor note selection CSS", () => {
     expect(css).toContain("box-shadow: 0 0 0 3px var(--tab-drag-ring);");
   });
 
+  it("shows the selection cursor across the measure grid", () => {
+    expect(css).toContain(".banjo-tab-editor[data-selection-cursor=\"true\"] .banjo-tab-measure-grid,");
+    expect(css).toContain(".banjo-tab-editor[data-selection-mode=\"true\"] .banjo-tab-measure-grid,");
+  });
+
   it("draws the selection button insertion caret with serifs", () => {
     expect(css).toContain(".banjo-tab-selection-caret::before");
     expect(css).toContain(".banjo-tab-selection-caret::after");

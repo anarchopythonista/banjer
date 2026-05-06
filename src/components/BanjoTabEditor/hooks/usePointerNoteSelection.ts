@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import type { Dispatch, PointerEvent as ReactPointerEvent } from "react";
 import { SLOTS_PER_MEASURE } from "../constants";
-import { findNoteLocationFromPoint, type StringTrackGeometry } from "../geometry";
+import { findNearestNoteLocationFromPoint, type StringTrackGeometry } from "../geometry";
 import { normalizeSelectionBounds } from "../selection";
 import type { BanjoTabAction } from "../tabReducer";
 import type {
@@ -210,7 +210,7 @@ export function usePointerNoteSelection({
   return {
     registerStringTrack,
     shouldSuppressClick,
-    stringTrackPointerHandlers: {
+    selectionPointerHandlers: {
       onPointerDown: startSelection,
       onPointerMove: updateSelection,
       onPointerUp: finishSelection,
@@ -236,7 +236,7 @@ function getSelectionLocation(
     })
     .filter((track) => !measureId || track.measureId === measureId);
 
-  return findNoteLocationFromPoint(point, tracks, SLOTS_PER_MEASURE);
+  return findNearestNoteLocationFromPoint(point, tracks, SLOTS_PER_MEASURE);
 }
 
 function getPointerPoint(event: ReactPointerEvent<HTMLElement>): ScreenPoint {

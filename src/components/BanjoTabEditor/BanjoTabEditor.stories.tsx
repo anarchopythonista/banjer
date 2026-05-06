@@ -714,36 +714,41 @@ export const ColumnSelectionInteraction: Story = {
     initialState: verticalSlotSelectionEditorState(),
   },
   play: async ({ canvas, canvasElement }) => {
+    const measureGrid = canvas.getByRole("grid", { name: "Tablature Column test" });
     const startSlot = canvas.getByLabelText("Set string 3 slot 1");
     const endSlot = canvas.getByLabelText("Set string 3 slot 2");
+    const upperGapSlot = canvas.getByLabelText("Set string 2 slot 1");
+    const lowerGapSlot = canvas.getByLabelText("Set string 3 slot 1");
     const startRect = startSlot.getBoundingClientRect();
     const endRect = endSlot.getBoundingClientRect();
+    const upperGapRect = upperGapSlot.getBoundingClientRect();
+    const lowerGapRect = lowerGapSlot.getBoundingClientRect();
+    const gapY = (upperGapRect.bottom + lowerGapRect.top) / 2;
 
-    fireEvent.pointerDown(startSlot, {
+    fireEvent.pointerDown(measureGrid, {
       clientX: startRect.left + startRect.width / 2,
-      clientY: startRect.top + startRect.height / 2,
+      clientY: gapY,
       button: 0,
       pointerId: 12,
       pointerType: "mouse",
       shiftKey: true,
     });
-    fireEvent.pointerMove(startSlot, {
+    fireEvent.pointerMove(measureGrid, {
       clientX: endRect.left + endRect.width / 2,
-      clientY: endRect.top + endRect.height / 2,
+      clientY: gapY,
       button: 0,
       pointerId: 12,
       pointerType: "mouse",
       shiftKey: true,
     });
-    fireEvent.pointerUp(startSlot, {
+    fireEvent.pointerUp(measureGrid, {
       clientX: endRect.left + endRect.width / 2,
-      clientY: endRect.top + endRect.height / 2,
+      clientY: gapY,
       button: 0,
       pointerId: 12,
       pointerType: "mouse",
       shiftKey: true,
     });
-    fireEvent.click(startSlot, { shiftKey: true });
 
     await expect(canvas.getByRole("button", { name: "Copy selected notes" })).toBeInTheDocument();
     await expect(canvasElement.querySelectorAll(".banjo-tab-note[data-selected='true']").length).toBe(2);

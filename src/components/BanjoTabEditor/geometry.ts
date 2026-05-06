@@ -91,6 +91,55 @@ export function findNoteLocationFromPoint(
   };
 }
 
+export function findNearestNoteLocationFromPoint(
+  point: ScreenPoint,
+  tracks: StringTrackGeometry[],
+  slotCount: number,
+): NoteLocation | null {
+  const exactLocation = findNoteLocationFromPoint(point, tracks, slotCount);
+
+  if (exactLocation) {
+    return exactLocation;
+  }
+
+  const trackGroups = groupTracksByMeasure(tracks);
+
+  for (const measureTracks of trackGroups.values()) {
+    const measureBounds = getTrackGroupBounds(measureTracks);
+
+    if (!measureBounds || !isPointInsideRect(point, measureBounds)) {
+      continue;
+    }
+
+    const nearestTrack = measureTracks.reduce<StringTrackGeometry | null>((nearest, track) => {
+      if (!nearest) {
+        return track;
+      }
+
+      return getVerticalCenterDistance(point, track.rect) <
+        getVerticalCenterDistance(point, nearest.rect)
+        ? track
+        : nearest;
+    }, null);
+
+    if (!nearestTrack) {
+      return null;
+    }
+
+    return {
+      measureId: nearestTrack.measureId,
+      stringIndex: nearestTrack.stringIndex,
+      position: xToNearestSlot(point.x, {
+        left: nearestTrack.rect.left,
+        width: nearestTrack.rect.width,
+        slotCount,
+      }),
+    };
+  }
+
+  return null;
+}
+
 export function isPointInsideRect(point: ScreenPoint, rect: RectLike): boolean {
   return (
     point.x >= rect.left &&
@@ -98,6 +147,37 @@ export function isPointInsideRect(point: ScreenPoint, rect: RectLike): boolean {
     point.y >= rect.top &&
     point.y <= rect.top + rect.height
   );
+}
+
+function groupTracksByMeasure(tracks: StringTrackGeometry[]): Map<string, StringTrackGeometry[]> {
+  return tracks.reduce((groups, track) => {
+    const group = groups.get(track.measureId) ?? [];
+    group.push(track);
+    groups.set(track.measureId, group);
+    return groups;
+  }, new Map<string, StringTrackGeometry[]>());
+}
+
+function getTrackGroupBounds(tracks: StringTrackGeometry[]): RectLike | null {
+  if (tracks.length === 0) {
+    return null;
+  }
+
+  const left = Math.min(...tracks.map((track) => track.rect.left));
+  const right = Math.max(...tracks.map((track) => track.rect.left + track.rect.width));
+  const top = Math.min(...tracks.map((track) => track.rect.top));
+  const bottom = Math.max(...tracks.map((track) => track.rect.top + track.rect.height));
+
+  return {
+    left,
+    top,
+    width: right - left,
+    height: bottom - top,
+  };
+}
+
+function getVerticalCenterDistance(point: ScreenPoint, rect: RectLike): number {
+  return Math.abs(point.y - (rect.top + rect.height / 2));
 }
 
 export function containPopoverPosition(

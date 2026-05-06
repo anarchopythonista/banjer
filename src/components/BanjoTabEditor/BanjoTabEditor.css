@@ -66,8 +66,10 @@
   flex: 0 0 auto;
 }
 
+.banjo-tab-editor[data-selection-cursor="true"] .banjo-tab-measure-grid,
 .banjo-tab-editor[data-selection-cursor="true"] .banjo-tab-slot-button,
 .banjo-tab-editor[data-selection-cursor="true"] .banjo-tab-string-track,
+.banjo-tab-editor[data-selection-mode="true"] .banjo-tab-measure-grid,
 .banjo-tab-editor[data-selection-mode="true"] .banjo-tab-slot-button,
 .banjo-tab-editor[data-selection-mode="true"] .banjo-tab-string-track {
   cursor: text;

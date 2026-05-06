@@ -101,11 +101,6 @@ export function TabStringRow({
           dragApi.registerStringTrack(measureId, stringIndex, element);
           selectionApi.registerStringTrack(measureId, stringIndex, element);
         }}
-        onPointerDown={selectionApi.stringTrackPointerHandlers.onPointerDown}
-        onPointerMove={selectionApi.stringTrackPointerHandlers.onPointerMove}
-        onPointerUp={selectionApi.stringTrackPointerHandlers.onPointerUp}
-        onPointerCancel={selectionApi.stringTrackPointerHandlers.onPointerCancel}
-        onLostPointerCapture={selectionApi.stringTrackPointerHandlers.onLostPointerCapture}
       >
         <div className="banjo-tab-slot-grid">
           {Array.from({ length: SLOTS_PER_MEASURE }).map((_, index) => (
