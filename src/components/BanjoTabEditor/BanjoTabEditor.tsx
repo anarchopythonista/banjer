@@ -453,7 +453,7 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
             onRedo={redoTabChange}
           />
           <SelectionModeButton
-            isPressed={isSelectionModeEnabled}
+            isPressed={isSelectionModeEnabled || isShiftPressed}
             onToggle={() => {
               const nextEnabled = !isSelectionModeEnabled;
               setIsSelectionModeEnabled(nextEnabled);

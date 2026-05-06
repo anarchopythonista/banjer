@@ -1102,6 +1102,21 @@ export const MobileSelectionButtonPressed: Story = {
   },
 };
 
+export const ShiftSelectionButtonPressed: Story = {
+  args: {
+    initialState: selectionEditorState(),
+  },
+  play: async ({ canvas }) => {
+    const selectionButton = canvas.getByRole("button", { name: "Select notes" });
+
+    await expect(selectionButton).toHaveAttribute("aria-pressed", "false");
+    fireEvent.keyDown(window, { key: "Shift" });
+    await expect(selectionButton).toHaveAttribute("aria-pressed", "true");
+    fireEvent.keyUp(window, { key: "Shift" });
+    await expect(selectionButton).toHaveAttribute("aria-pressed", "false");
+  },
+};
+
 export const MobileNarrowArticulatedNotes: Story = {
   args: {
     initialState: makeEditorState([
