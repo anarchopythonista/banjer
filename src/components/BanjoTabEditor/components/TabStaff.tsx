@@ -1,7 +1,17 @@
-import type { BanjoTab, EditorMode, NoteLocation, ScreenPoint, TabNoteData } from "../types";
+import type {
+  BanjoTab,
+  CopiedNoteSelection,
+  EditorMode,
+  NoteLocation,
+  PasteTarget,
+  ScreenPoint,
+  SelectionBounds,
+  TabNoteData,
+} from "../types";
 import { TabMeasure } from "./TabMeasure";
 import type { usePointerNoteDrag } from "../hooks/usePointerNoteDrag";
 import type { usePointerMeasureDrag } from "../hooks/usePointerMeasureDrag";
+import type { usePointerNoteSelection } from "../hooks/usePointerNoteSelection";
 
 type TabStaffProps = {
   tab: BanjoTab;
@@ -10,6 +20,7 @@ type TabStaffProps = {
     location: NoteLocation,
     screenPoint: ScreenPoint,
     returnFocusElement: HTMLElement,
+    keepPastePreviewActive?: boolean,
   ) => void;
   onNotePress: (
     note: TabNoteData,
@@ -22,6 +33,13 @@ type TabStaffProps = {
   onRenameMeasure: (measureId: string, title: string) => void;
   dragApi: ReturnType<typeof usePointerNoteDrag>;
   measureDragApi: ReturnType<typeof usePointerMeasureDrag>;
+  selectedNoteIds: Set<string>;
+  completedSelectionBounds: SelectionBounds | null;
+  copiedSelection: CopiedNoteSelection | null;
+  pasteTarget: PasteTarget | null;
+  isSelectionModeEnabled: boolean;
+  onCopySelection: () => void;
+  selectionApi: ReturnType<typeof usePointerNoteSelection>;
 };
 
 export function TabStaff({
@@ -34,6 +52,13 @@ export function TabStaff({
   onRenameMeasure,
   dragApi,
   measureDragApi,
+  selectedNoteIds,
+  completedSelectionBounds,
+  copiedSelection,
+  pasteTarget,
+  isSelectionModeEnabled,
+  onCopySelection,
+  selectionApi,
 }: TabStaffProps) {
   const targetIndex = mode.type === "dragging-measure" ? mode.currentTargetIndex : null;
 
@@ -55,6 +80,13 @@ export function TabStaff({
             onRenameMeasure={onRenameMeasure}
             dragApi={dragApi}
             measureDragApi={measureDragApi}
+            selectedNoteIds={selectedNoteIds}
+            completedSelectionBounds={completedSelectionBounds}
+            copiedSelection={copiedSelection}
+            pasteTarget={pasteTarget}
+            isSelectionModeEnabled={isSelectionModeEnabled}
+            onCopySelection={onCopySelection}
+            selectionApi={selectionApi}
           />
         </div>
       ))}

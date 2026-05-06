@@ -1,10 +1,23 @@
 import type { KeyboardEvent, PointerEvent } from "react";
 import { getDefaultMeasureTitle } from "../constants";
-import type { BanjoString, EditorMode, NoteLocation, ScreenPoint, TabMeasureData, TabNoteData } from "../types";
+import { normalizeSelectionBounds } from "../selection";
+import type {
+  BanjoString,
+  CopiedNoteSelection,
+  EditorMode,
+  NoteLocation,
+  PasteTarget,
+  ScreenPoint,
+  SelectionBounds,
+  TabMeasureData,
+  TabNoteData,
+} from "../types";
 import { EditableMeasureTitle } from "./EditableMeasureTitle";
+import { SelectionCopyButton } from "./SelectionCopyButton";
 import { TabStringRow } from "./TabStringRow";
 import type { usePointerNoteDrag } from "../hooks/usePointerNoteDrag";
 import type { usePointerMeasureDrag } from "../hooks/usePointerMeasureDrag";
+import type { usePointerNoteSelection } from "../hooks/usePointerNoteSelection";
 
 type TabMeasureProps = {
   measure: TabMeasureData;
@@ -16,6 +29,7 @@ type TabMeasureProps = {
     location: NoteLocation,
     screenPoint: ScreenPoint,
     returnFocusElement: HTMLElement,
+    keepPastePreviewActive?: boolean,
   ) => void;
   onNotePress: (
     note: TabNoteData,
@@ -28,6 +42,13 @@ type TabMeasureProps = {
   dragApi: ReturnType<typeof usePointerNoteDrag>;
   measureDragApi: ReturnType<typeof usePointerMeasureDrag>;
   onRenameMeasure: (measureId: string, title: string) => void;
+  selectedNoteIds: Set<string>;
+  completedSelectionBounds: SelectionBounds | null;
+  copiedSelection: CopiedNoteSelection | null;
+  pasteTarget: PasteTarget | null;
+  isSelectionModeEnabled: boolean;
+  onCopySelection: () => void;
+  selectionApi: ReturnType<typeof usePointerNoteSelection>;
 };
 
 export function TabMeasure({
@@ -43,8 +64,21 @@ export function TabMeasure({
   dragApi,
   measureDragApi,
   onRenameMeasure,
+  selectedNoteIds,
+  completedSelectionBounds,
+  copiedSelection,
+  pasteTarget,
+  isSelectionModeEnabled,
+  onCopySelection,
+  selectionApi,
 }: TabMeasureProps) {
   const measureTitle = measure.title || getDefaultMeasureTitle(measure.id);
+  const activeSelectionBounds =
+    mode.type === "selecting-notes" && mode.measureId === measure.id
+      ? normalizeSelectionBounds(measure.id, mode.start, mode.current)
+      : null;
+  const copyButtonBounds =
+    completedSelectionBounds?.measureId === measure.id ? completedSelectionBounds : null;
 
   const startMeasureDrag = (event: PointerEvent<HTMLElement>) => {
     measureDragApi.measurePointerHandlers.onPointerDown(measure.id, measureIndex, event);
@@ -133,8 +167,17 @@ export function TabMeasure({
             onQuickFretTarget={onQuickFretTarget}
             onQuickFretTargetClear={onQuickFretTargetClear}
             dragApi={dragApi}
+            activeSelectionBounds={activeSelectionBounds}
+            selectedNoteIds={selectedNoteIds}
+            copiedSelection={copiedSelection}
+            pasteTarget={pasteTarget}
+            isSelectionModeEnabled={isSelectionModeEnabled}
+            selectionApi={selectionApi}
           />
         ))}
+        {copyButtonBounds && (
+          <SelectionCopyButton bounds={copyButtonBounds} onCopy={onCopySelection} />
+        )}
       </div>
     </section>
   );

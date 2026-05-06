@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AddMeasureButton } from "./components/AddMeasureButton";
 import { DocumentMenuButton } from "./components/DocumentMenuButton";
 import { EditableDocumentTitle } from "./components/EditableDocumentTitle";
 import { FretPickerPopover } from "./components/FretPickerPopover";
+import { SelectionModeButton } from "./components/SelectionModeButton";
 import { TabStaff } from "./components/TabStaff";
 import { TrashDropZone } from "./components/TrashDropZone";
 import { UndoRedoControls } from "./components/UndoRedoControls";
@@ -12,12 +13,21 @@ import { useBanjoTabDocuments } from "./hooks/useBanjoTabDocuments";
 import { usePointerDocumentDrag } from "./hooks/usePointerDocumentDrag";
 import { usePointerMeasureDrag } from "./hooks/usePointerMeasureDrag";
 import { usePointerNoteDrag } from "./hooks/usePointerNoteDrag";
+import { usePointerNoteSelection } from "./hooks/usePointerNoteSelection";
 import { formatNoteLabel } from "./noteFormatting";
+import {
+  createCopiedNoteSelection,
+  getNotesInSelection,
+  normalizeSelectionBounds,
+} from "./selection";
 import type {
   BanjoTabEditorState,
+  CopiedNoteSelection,
   EditorMode,
   NoteLocation,
+  PasteTarget,
   ScreenPoint,
+  SelectionBounds,
   TabArticulation,
   TabNoteData,
 } from "./types";
@@ -41,15 +51,6 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
     canRedo,
     shouldConfirmDiscard,
   } = useBanjoTabDocuments(initialState);
-  const dragApi = usePointerNoteDrag({ state, dispatch });
-  const measureDragApi = usePointerMeasureDrag({ state, dispatch });
-  const documentDragApi = usePointerDocumentDrag({
-    onDeleteDocument: (id) => {
-      void deleteDocument(id);
-    },
-    confirmDeleteDocument: (document) =>
-      window.confirm(`Delete "${document.title}"? This cannot be undone.`),
-  });
   const notes = state.tab.measures.flatMap((measure) => measure.notes);
   const currentPickerNoteId = state.mode.type === "fret-picker" ? state.mode.noteId : undefined;
   const draggedNoteId = state.mode.type === "dragging-note" ? state.mode.noteId : undefined;
@@ -59,9 +60,105 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
     state.mode.type === "dragging-measure"
       ? state.tab.measures.find((measure) => measure.id === state.mode.measureId)
       : undefined;
-  const trashDropZoneState = getTrashDropZoneState(state.mode, documentDragApi.dragState);
   const pickerReturnFocusRef = useRef<HTMLElement | null>(null);
   const quickFretTargetRef = useRef<NoteLocation | null>(null);
+  const [isSelectionModeEnabled, setIsSelectionModeEnabled] = useState(false);
+  const [isShiftPressed, setIsShiftPressed] = useState(false);
+  const [completedSelectionBounds, setCompletedSelectionBounds] = useState<SelectionBounds | null>(null);
+  const [copiedSelection, setCopiedSelection] = useState<CopiedNoteSelection | null>(null);
+  const activeSelectionBounds =
+    state.mode.type === "selecting-notes"
+      ? normalizeSelectionBounds(state.mode.measureId, state.mode.start, state.mode.current)
+      : completedSelectionBounds;
+  const selectedNoteIds = useMemo(
+    () => new Set(getSelectedNoteIds(state, activeSelectionBounds, copiedSelection)),
+    [activeSelectionBounds, copiedSelection, state],
+  );
+  const pasteTarget = state.mode.type === "paste-preview" ? state.mode.target : null;
+
+  const clearSelection = useCallback(() => {
+    setCompletedSelectionBounds(null);
+    setCopiedSelection(null);
+    if (state.mode.type === "paste-preview" || state.mode.type === "selecting-notes") {
+      dispatch({ type: "SET_EDITOR_MODE", mode: { type: "idle" } });
+    }
+  }, [dispatch, state.mode.type]);
+
+  const completeSelection = useCallback((bounds: SelectionBounds) => {
+    const measure = state.tab.measures.find((item) => item.id === bounds.measureId);
+    const selectedNotes = measure ? getNotesInSelection(measure, bounds) : [];
+
+    if (selectedNotes.length === 0) {
+      setCompletedSelectionBounds(null);
+      return;
+    }
+
+    setCompletedSelectionBounds(bounds);
+  }, [state.tab.measures]);
+
+  const copySelection = useCallback(() => {
+    if (!completedSelectionBounds) {
+      return;
+    }
+
+    const measure = state.tab.measures.find((item) => item.id === completedSelectionBounds.measureId);
+    const selectedNotes = measure ? getNotesInSelection(measure, completedSelectionBounds) : [];
+    const nextCopiedSelection = createCopiedNoteSelection(completedSelectionBounds.measureId, selectedNotes);
+
+    if (!nextCopiedSelection) {
+      return;
+    }
+
+    setCopiedSelection(nextCopiedSelection);
+    dispatch({
+      type: "SET_EDITOR_MODE",
+      mode: {
+        type: "paste-preview",
+        target: quickFretTargetRef.current
+          ? {
+              measureId: quickFretTargetRef.current.measureId,
+              position: quickFretTargetRef.current.position,
+            }
+          : null,
+        pointer: null,
+      },
+    });
+  }, [completedSelectionBounds, dispatch, state.tab.measures]);
+
+  const pasteCopiedSelection = useCallback((target: PasteTarget, keepPreviewActive: boolean) => {
+    if (!copiedSelection) {
+      return;
+    }
+
+    dispatch({ type: "PASTE_NOTES", target, selection: copiedSelection });
+    if (!keepPreviewActive) {
+      dispatch({ type: "SET_EDITOR_MODE", mode: { type: "idle" } });
+      setCompletedSelectionBounds(null);
+      setCopiedSelection(null);
+    }
+  }, [copiedSelection, dispatch]);
+
+  const selectionApi = usePointerNoteSelection({
+    state,
+    dispatch,
+    isSelectionModeEnabled,
+    onSelectionComplete: completeSelection,
+    onSelectionClear: clearSelection,
+  });
+  const dragApi = usePointerNoteDrag({
+    state,
+    dispatch,
+    isNoteDragDisabled: isSelectionModeEnabled || state.mode.type === "selecting-notes",
+  });
+  const measureDragApi = usePointerMeasureDrag({ state, dispatch });
+  const documentDragApi = usePointerDocumentDrag({
+    onDeleteDocument: (id) => {
+      void deleteDocument(id);
+    },
+    confirmDeleteDocument: (document) =>
+      window.confirm(`Delete "${document.title}"? This cannot be undone.`),
+  });
+  const trashDropZoneState = getTrashDropZoneState(state.mode, documentDragApi.dragState);
 
   const openFretPicker = (
     location: NoteLocation,
@@ -69,6 +166,8 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
     noteId?: string,
     returnFocusElement?: HTMLElement,
   ) => {
+    setCompletedSelectionBounds(null);
+    setCopiedSelection(null);
     pickerReturnFocusRef.current = returnFocusElement ?? null;
     dispatch({
       type: "SET_EDITOR_MODE",
@@ -85,7 +184,16 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
     location: NoteLocation,
     screenPoint: ScreenPoint,
     returnFocusElement: HTMLElement,
+    keepPastePreviewActive = false,
   ) => {
+    if (state.mode.type === "paste-preview" && copiedSelection) {
+      pasteCopiedSelection(
+        { measureId: location.measureId, position: location.position },
+        keepPastePreviewActive,
+      );
+      return;
+    }
+
     const measure = state.tab.measures.find((item) => item.id === location.measureId);
     const existingNote = measure?.notes.find(
       (note) => note.stringIndex === location.stringIndex && note.position === location.position,
@@ -100,6 +208,14 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
     screenPoint: ScreenPoint,
     returnFocusElement: HTMLElement,
   ) => {
+    if (state.mode.type === "paste-preview" && copiedSelection) {
+      pasteCopiedSelection(
+        { measureId: location.measureId, position: location.position },
+        false,
+      );
+      return;
+    }
+
     openFretPicker(location, screenPoint, note.id, returnFocusElement);
   };
 
@@ -126,6 +242,16 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
 
   const handleQuickFretTarget = (location: NoteLocation) => {
     quickFretTargetRef.current = location;
+    if (state.mode.type === "paste-preview") {
+      dispatch({
+        type: "SET_EDITOR_MODE",
+        mode: {
+          type: "paste-preview",
+          target: { measureId: location.measureId, position: location.position },
+          pointer: state.mode.pointer,
+        },
+      });
+    }
   };
 
   const closeFretPicker = () => {
@@ -159,6 +285,26 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Shift" && !event.repeat) {
+        setIsShiftPressed(true);
+      }
+    };
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === "Shift") {
+        setIsShiftPressed(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (isEditableEventTarget(event.target)) {
         return;
       }
@@ -168,6 +314,40 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
       }
 
       const quickFretTarget = quickFretTargetRef.current;
+
+      if (event.key === "Escape") {
+        if (
+          state.mode.type === "paste-preview" ||
+          state.mode.type === "selecting-notes" ||
+          completedSelectionBounds ||
+          copiedSelection ||
+          isSelectionModeEnabled
+        ) {
+          event.preventDefault();
+          setIsSelectionModeEnabled(false);
+          clearSelection();
+        }
+        return;
+      }
+
+      if (isCopyShortcut(event)) {
+        if (completedSelectionBounds) {
+          event.preventDefault();
+          copySelection();
+        }
+        return;
+      }
+
+      if (isPasteShortcut(event)) {
+        if (copiedSelection && quickFretTarget) {
+          event.preventDefault();
+          pasteCopiedSelection(
+            { measureId: quickFretTarget.measureId, position: quickFretTarget.position },
+            false,
+          );
+        }
+        return;
+      }
 
       if (
         state.mode.type === "idle" &&
@@ -223,10 +403,29 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [canRedo, canUndo, dispatch, redoTabChange, state.mode.type, state.tab.measures, undoTabChange]);
+  }, [
+    canRedo,
+    canUndo,
+    clearSelection,
+    completedSelectionBounds,
+    copiedSelection,
+    copySelection,
+    dispatch,
+    isSelectionModeEnabled,
+    pasteCopiedSelection,
+    redoTabChange,
+    state.mode.type,
+    state.tab.measures,
+    undoTabChange,
+  ]);
 
   return (
-    <main className="banjo-tab-editor" aria-labelledby="banjo-tab-editor-title">
+    <main
+      className="banjo-tab-editor"
+      data-selection-cursor={state.mode.type === "idle" && isShiftPressed ? true : undefined}
+      data-selection-mode={isSelectionModeEnabled || undefined}
+      aria-labelledby="banjo-tab-editor-title"
+    >
       <header className="banjo-tab-editor-header">
         <div className="banjo-tab-document-controls">
           <EditableDocumentTitle
@@ -253,6 +452,16 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
             onUndo={undoTabChange}
             onRedo={redoTabChange}
           />
+          <SelectionModeButton
+            isPressed={isSelectionModeEnabled}
+            onToggle={() => {
+              const nextEnabled = !isSelectionModeEnabled;
+              setIsSelectionModeEnabled(nextEnabled);
+              if (!nextEnabled) {
+                clearSelection();
+              }
+            }}
+          />
           <AddMeasureButton onAddMeasure={() => dispatch({ type: "ADD_MEASURE" })} />
         </div>
       </header>
@@ -266,6 +475,13 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
         onRenameMeasure={handleRenameMeasure}
         dragApi={dragApi}
         measureDragApi={measureDragApi}
+        selectedNoteIds={selectedNoteIds}
+        completedSelectionBounds={completedSelectionBounds}
+        copiedSelection={copiedSelection}
+        pasteTarget={pasteTarget}
+        isSelectionModeEnabled={isSelectionModeEnabled}
+        onCopySelection={copySelection}
+        selectionApi={selectionApi}
       />
       <FretPickerPopover
         mode={state.mode}
@@ -334,6 +550,24 @@ function findNoteAtLocation(
     );
 }
 
+function getSelectedNoteIds(
+  state: BanjoTabEditorState,
+  bounds: SelectionBounds | null,
+  copiedSelection: CopiedNoteSelection | null,
+): string[] {
+  const ids = new Set<string>();
+
+  if (bounds) {
+    const measure = state.tab.measures.find((item) => item.id === bounds.measureId);
+    if (measure) {
+      getNotesInSelection(measure, bounds).forEach((note) => ids.add(note.id));
+    }
+  }
+
+  copiedSelection?.sourceNoteIds.forEach((id) => ids.add(id));
+  return Array.from(ids);
+}
+
 function restorePickerFocus(ref: { current: HTMLElement | null }) {
   const element = ref.current;
   ref.current = null;
@@ -351,6 +585,14 @@ function isUndoRedoShortcut(event: KeyboardEvent): boolean {
     ((event.metaKey || event.ctrlKey) && key === "z") ||
     (event.ctrlKey && key === "y")
   );
+}
+
+function isCopyShortcut(event: KeyboardEvent): boolean {
+  return (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "c";
+}
+
+function isPasteShortcut(event: KeyboardEvent): boolean {
+  return (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "v";
 }
 
 function isSingleDigitShortcut(event: KeyboardEvent): boolean {
@@ -418,6 +660,8 @@ function getTrashDropZoneState(
       };
     case "fret-picker":
     case "resizing-articulation":
+    case "selecting-notes":
+    case "paste-preview":
     case "idle":
       return {
         isActive: false,

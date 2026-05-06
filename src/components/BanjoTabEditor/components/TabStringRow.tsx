@@ -1,9 +1,21 @@
 import type { MouseEvent } from "react";
 import { SLOTS_PER_MEASURE } from "../constants";
-import type { BanjoString, EditorMode, NoteLocation, ScreenPoint, TabNoteData } from "../types";
+import type {
+  BanjoString,
+  CopiedNoteSelection,
+  EditorMode,
+  NoteLocation,
+  PasteTarget,
+  ScreenPoint,
+  SelectionBounds,
+  TabNoteData,
+} from "../types";
+import { PastePreview } from "./PastePreview";
+import { SelectionRegionOverlay } from "./SelectionRegionOverlay";
 import { SlotHighlight } from "./SlotHighlight";
 import { TabNote } from "./TabNote";
 import type { usePointerNoteDrag } from "../hooks/usePointerNoteDrag";
+import type { usePointerNoteSelection } from "../hooks/usePointerNoteSelection";
 
 type TabStringRowProps = {
   measureId: string;
@@ -15,6 +27,7 @@ type TabStringRowProps = {
     location: NoteLocation,
     screenPoint: ScreenPoint,
     returnFocusElement: HTMLElement,
+    keepPastePreviewActive?: boolean,
   ) => void;
   onNotePress: (
     note: TabNoteData,
@@ -25,6 +38,12 @@ type TabStringRowProps = {
   onQuickFretTarget: (location: NoteLocation) => void;
   onQuickFretTargetClear: (location: NoteLocation) => void;
   dragApi: ReturnType<typeof usePointerNoteDrag>;
+  activeSelectionBounds: SelectionBounds | null;
+  selectedNoteIds: Set<string>;
+  copiedSelection: CopiedNoteSelection | null;
+  pasteTarget: PasteTarget | null;
+  isSelectionModeEnabled: boolean;
+  selectionApi: ReturnType<typeof usePointerNoteSelection>;
 };
 
 export function TabStringRow({
@@ -38,9 +57,19 @@ export function TabStringRow({
   onQuickFretTarget,
   onQuickFretTargetClear,
   dragApi,
+  activeSelectionBounds,
+  selectedNoteIds,
+  copiedSelection,
+  pasteTarget,
+  isSelectionModeEnabled,
+  selectionApi,
 }: TabStringRowProps) {
   const handleSlotClick = (position: number) => (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
+    if (selectionApi.shouldSuppressClick()) {
+      return;
+    }
+
     onSlotPress(
       {
         measureId,
@@ -49,6 +78,7 @@ export function TabStringRow({
       },
       getEventPoint(event),
       event.currentTarget,
+      event.metaKey || event.ctrlKey,
     );
   };
 
@@ -67,7 +97,15 @@ export function TabStringRow({
         className="banjo-tab-string-track"
         role="gridcell"
         aria-label={`String ${string.order}, ${string.label}`}
-        ref={(element) => dragApi.registerStringTrack(measureId, stringIndex, element)}
+        ref={(element) => {
+          dragApi.registerStringTrack(measureId, stringIndex, element);
+          selectionApi.registerStringTrack(measureId, stringIndex, element);
+        }}
+        onPointerDown={selectionApi.stringTrackPointerHandlers.onPointerDown}
+        onPointerMove={selectionApi.stringTrackPointerHandlers.onPointerMove}
+        onPointerUp={selectionApi.stringTrackPointerHandlers.onPointerUp}
+        onPointerCancel={selectionApi.stringTrackPointerHandlers.onPointerCancel}
+        onLostPointerCapture={selectionApi.stringTrackPointerHandlers.onLostPointerCapture}
       >
         <div className="banjo-tab-slot-grid">
           {Array.from({ length: SLOTS_PER_MEASURE }).map((_, index) => (
@@ -84,6 +122,15 @@ export function TabStringRow({
             />
           ))}
         </div>
+        {activeSelectionBounds && (
+          <SelectionRegionOverlay bounds={activeSelectionBounds} stringIndex={stringIndex} />
+        )}
+        <PastePreview
+          measureId={measureId}
+          stringIndex={stringIndex}
+          copiedSelection={copiedSelection}
+          target={pasteTarget}
+        />
         {mode.type === "dragging-note" &&
           mode.currentTarget?.measureId === measureId &&
           mode.currentTarget.stringIndex === stringIndex && (
@@ -112,6 +159,8 @@ export function TabStringRow({
             onDeleteNoteByKeyboard={dragApi.deleteNoteByKeyboard}
             shouldSuppressClick={dragApi.shouldSuppressClick}
             isDragging={mode.type === "dragging-note" && mode.noteId === note.id}
+            isSelected={selectedNoteIds.has(note.id)}
+            isNoteDragDisabled={isSelectionModeEnabled || mode.type === "selecting-notes"}
             mode={mode}
           />
         ))}

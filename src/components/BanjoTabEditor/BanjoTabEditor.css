@@ -512,6 +512,7 @@
 }
 
 .banjo-tab-measure-grid {
+  position: relative;
   display: grid;
   padding: 12px 14px 16px;
 }
