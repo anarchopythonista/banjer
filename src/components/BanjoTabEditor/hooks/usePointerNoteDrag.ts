@@ -31,13 +31,18 @@ type ActiveArticulationResize = {
 type UsePointerNoteDragArgs = {
   state: BanjoTabEditorState;
   dispatch: Dispatch<BanjoTabAction>;
+  isNoteDragDisabled?: boolean;
 };
 
 const DRAG_THRESHOLD_PX = 6;
 const TOUCH_CANCEL_THRESHOLD_PX = 10;
 const TOUCH_LONG_PRESS_MS = 350;
 
-export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) {
+export function usePointerNoteDrag({
+  state,
+  dispatch,
+  isNoteDragDisabled = false,
+}: UsePointerNoteDragArgs) {
   const activePointerRef = useRef<ActivePointer | null>(null);
   const activeResizeRef = useRef<ActiveArticulationResize | null>(null);
   const stringTrackElementsRef = useRef(new Map<string, HTMLElement>());
@@ -99,6 +104,10 @@ export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) 
         return;
       }
 
+      if (event.shiftKey || isNoteDragDisabled) {
+        return;
+      }
+
       const point = getPointerPoint(event);
       const activePointer: ActivePointer = {
         note,
@@ -120,7 +129,7 @@ export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) 
 
       activePointerRef.current = activePointer;
     },
-    [startDragging],
+    [isNoteDragDisabled, startDragging],
   );
 
   const handleArticulationResizePointerDown = useCallback(
