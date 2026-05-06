@@ -362,6 +362,36 @@
   background: var(--tab-accent);
 }
 
+.banjo-tab-selection-caret {
+  position: relative;
+  display: inline-block;
+  width: 14px;
+  height: 18px;
+}
+
+.banjo-tab-selection-caret::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 50%;
+  width: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transform: translateX(-50%);
+}
+
+.banjo-tab-selection-caret::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  left: 1px;
+  right: 1px;
+  border-top: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+}
+
 .banjo-tab-staff {
   display: grid;
   gap: 22px;
@@ -644,32 +674,26 @@
 
 .banjo-tab-note--articulation {
   display: block;
-  min-width: 0;
-  height: 34px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
+  min-width: 58px;
+  height: 30px;
+  padding: 0 12px;
   transform: translateY(-50%);
-  cursor: default;
   overflow: visible;
 }
 
 .banjo-tab-note--articulation::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 2px;
-  background: var(--tab-accent);
-  opacity: 0.32;
-  transform: translateY(-50%);
+  content: none;
+}
+
+.banjo-tab-note--articulation:focus-within {
+  border-color: var(--tab-accent);
+  box-shadow: 0 0 0 3px var(--tab-drag-ring);
+  outline: none;
 }
 
 .banjo-tab-note-edit {
   position: absolute;
-  inset: 0 -14px;
+  inset: 0;
   z-index: 2;
   padding: 0;
   border: 0;
@@ -681,7 +705,7 @@
 
 .banjo-tab-note-edit:focus-visible {
   outline: 3px solid var(--tab-focus);
-  outline-offset: 8px;
+  outline-offset: 3px;
 }
 
 .banjo-tab-note-fret,
@@ -696,30 +720,28 @@
 }
 
 .banjo-tab-note-fret {
-  min-width: 30px;
-  height: 28px;
-  padding: 0 7px;
-  border: 1px solid var(--tab-line);
-  border-radius: 999px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
   color: var(--tab-ink);
-  background: var(--tab-note-bg);
+  background: transparent;
   box-sizing: border-box;
 }
 
 .banjo-tab-note-fret--start {
-  left: 0;
+  left: 15px;
 }
 
 .banjo-tab-note-fret--end {
-  left: 100%;
+  left: calc(100% - 15px);
 }
 
 .banjo-tab-note-operator {
   left: 50%;
-  min-width: 22px;
-  height: 22px;
+  min-width: 18px;
+  padding: 0 3px;
   color: var(--tab-accent);
-  background: var(--tab-paper);
+  background: transparent;
   font-weight: 850;
 }
 
@@ -739,11 +761,11 @@
 }
 
 .banjo-tab-note-resize--start {
-  left: 0;
+  left: 15px;
 }
 
 .banjo-tab-note-resize--end {
-  left: 100%;
+  left: calc(100% - 15px);
 }
 
 .banjo-tab-note-resize::after {

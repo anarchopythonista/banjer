@@ -152,8 +152,8 @@ export function TabNote({
       <span
         className="banjo-tab-note banjo-tab-note--articulation"
         style={{
-          left: `${bounds.start}%`,
-          width: `max(1px, ${bounds.width}%)`,
+          left: `calc(${bounds.start}% - 15px)`,
+          width: `calc(max(1px, ${bounds.width}%) + 30px)`,
         }}
         data-dragging={isDragging || undefined}
         data-selected={isSelected || undefined}

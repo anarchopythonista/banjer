@@ -13,7 +13,7 @@ export function SelectionModeButton({ isPressed, onToggle }: SelectionModeButton
       title="Select notes"
       onClick={onToggle}
     >
-      <span aria-hidden="true">|</span>
+      <span className="banjo-tab-selection-caret" aria-hidden="true" />
     </button>
   );
 }

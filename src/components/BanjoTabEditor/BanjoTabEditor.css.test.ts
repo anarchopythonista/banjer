@@ -37,8 +37,24 @@ describe("BanjoTabEditor note selection CSS", () => {
     expect(css).toContain("box-shadow: 0 0 0 3px var(--tab-drag-ring);");
   });
 
+  it("draws the selection button insertion caret with serifs", () => {
+    expect(css).toContain(".banjo-tab-selection-caret::before");
+    expect(css).toContain(".banjo-tab-selection-caret::after");
+    expect(css).toContain("border-top: 2px solid currentColor;");
+    expect(css).toContain("border-bottom: 2px solid currentColor;");
+  });
+
   it("keeps Add Measure as the right-most mobile action", () => {
     expect(css).toContain(".banjo-tab-add-measure {\n  order: 20;");
     expect(css).toContain(".banjo-tab-selection-mode-button {\n  order: 10;");
+  });
+});
+
+describe("BanjoTabEditor articulation note CSS", () => {
+  it("keeps expanding articulations visually grouped in one pill", () => {
+    expect(css).toContain(".banjo-tab-note--articulation {\n  display: block;\n  min-width: 58px;");
+    expect(css).toContain(".banjo-tab-note--articulation {\n  display: block;\n  min-width: 58px;\n  height: 30px;");
+    expect(css).toContain(".banjo-tab-note--articulation {\n  display: block;\n  min-width: 58px;\n  height: 30px;\n  padding: 0 12px;");
+    expect(css).toContain(".banjo-tab-note--articulation::before {\n  content: none;");
   });
 });

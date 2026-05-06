@@ -709,6 +709,49 @@ export const SelectAndCopyNotesInteraction: Story = {
   },
 };
 
+export const ColumnSelectionInteraction: Story = {
+  args: {
+    initialState: verticalSlotSelectionEditorState(),
+  },
+  play: async ({ canvas, canvasElement }) => {
+    const startSlot = canvas.getByLabelText("Set string 3 slot 1");
+    const endSlot = canvas.getByLabelText("Set string 3 slot 2");
+    const startRect = startSlot.getBoundingClientRect();
+    const endRect = endSlot.getBoundingClientRect();
+
+    fireEvent.pointerDown(startSlot, {
+      clientX: startRect.left + startRect.width / 2,
+      clientY: startRect.top + startRect.height / 2,
+      button: 0,
+      pointerId: 12,
+      pointerType: "mouse",
+      shiftKey: true,
+    });
+    fireEvent.pointerMove(startSlot, {
+      clientX: endRect.left + endRect.width / 2,
+      clientY: endRect.top + endRect.height / 2,
+      button: 0,
+      pointerId: 12,
+      pointerType: "mouse",
+      shiftKey: true,
+    });
+    fireEvent.pointerUp(startSlot, {
+      clientX: endRect.left + endRect.width / 2,
+      clientY: endRect.top + endRect.height / 2,
+      button: 0,
+      pointerId: 12,
+      pointerType: "mouse",
+      shiftKey: true,
+    });
+    fireEvent.click(startSlot, { shiftKey: true });
+
+    await expect(canvas.getByRole("button", { name: "Copy selected notes" })).toBeInTheDocument();
+    await expect(canvasElement.querySelectorAll(".banjo-tab-note[data-selected='true']").length).toBe(2);
+    await expect(canvas.getByRole("button", { name: "Edit fret 2 on string 1, slot 1" })).toHaveAttribute("data-selected", "true");
+    await expect(canvas.getByRole("button", { name: "Edit fret 5 on string 5, slot 1" })).toHaveAttribute("data-selected", "true");
+  },
+};
+
 export const KeyboardCopyPasteInteraction: Story = {
   args: {
     initialState: selectionEditorState(),
@@ -1093,6 +1136,20 @@ function selectionEditorState(): BanjoTabEditorState {
       id: "measure-2",
       title: "Repeat",
       notes: [{ id: "note-4", stringIndex: 2, position: 8, fret: 7 }],
+    },
+  ]);
+}
+
+function verticalSlotSelectionEditorState(): BanjoTabEditorState {
+  return makeEditorState([
+    {
+      id: "measure-1",
+      title: "Column test",
+      notes: [
+        { id: "note-1", stringIndex: 0, position: 0, fret: 2 },
+        { id: "note-2", stringIndex: 4, position: 0, fret: 5 },
+        { id: "note-3", stringIndex: 2, position: 4, fret: 7 },
+      ],
     },
   ]);
 }

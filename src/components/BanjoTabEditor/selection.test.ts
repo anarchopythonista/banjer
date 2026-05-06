@@ -10,7 +10,7 @@ import {
 import type { TabMeasureData, TabNoteData } from "./types";
 
 describe("BanjoTabEditor selection helpers", () => {
-  it("normalizes selection bounds when dragging in any direction", () => {
+  it("normalizes selection bounds across full string columns when dragging in any direction", () => {
     expect(
       normalizeSelectionBounds(
         "measure-1",
@@ -19,28 +19,29 @@ describe("BanjoTabEditor selection helpers", () => {
       ),
     ).toEqual({
       measureId: "measure-1",
-      minStringIndex: 1,
+      minStringIndex: 0,
       maxStringIndex: 4,
       minPosition: 3,
       maxPosition: 12,
     });
   });
 
-  it("selects notes by starting string and slot", () => {
+  it("selects notes by full vertical slot columns", () => {
     const bounds = normalizeSelectionBounds(
       "measure-1",
-      { stringIndex: 1, position: 3 },
-      { stringIndex: 3, position: 8 },
+      { stringIndex: 2, position: 3 },
+      { stringIndex: 2, position: 8 },
     );
 
     expect(isNoteInSelection(note("note-1", 2, 4, 5), bounds)).toBe(true);
-    expect(isNoteInSelection(note("note-2", 4, 4, 5), bounds)).toBe(false);
-    expect(isNoteInSelection(note("note-3", 2, 9, 5), bounds)).toBe(false);
+    expect(isNoteInSelection(note("note-2", 4, 4, 5), bounds)).toBe(true);
+    expect(isNoteInSelection(note("note-3", 0, 4, 5), bounds)).toBe(true);
+    expect(isNoteInSelection(note("note-4", 2, 9, 5), bounds)).toBe(false);
     expect(
       isNoteInSelection(
         {
-          id: "note-4",
-          stringIndex: 2,
+          id: "note-5",
+          stringIndex: 4,
           position: 8,
           fret: 2,
           durationSlots: 4,

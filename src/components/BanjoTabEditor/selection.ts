@@ -1,4 +1,5 @@
 import { clamp } from "./geometry";
+import { BANJO_STRING_COUNT } from "./constants";
 import type {
   CopiedNoteSelection,
   SelectionBounds,
@@ -14,8 +15,8 @@ export function normalizeSelectionBounds(
 ): SelectionBounds {
   return {
     measureId,
-    minStringIndex: Math.min(start.stringIndex, current.stringIndex),
-    maxStringIndex: Math.max(start.stringIndex, current.stringIndex),
+    minStringIndex: 0,
+    maxStringIndex: BANJO_STRING_COUNT - 1,
     minPosition: Math.min(start.position, current.position),
     maxPosition: Math.max(start.position, current.position),
   };
