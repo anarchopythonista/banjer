@@ -30,3 +30,15 @@ describe("BanjoTabEditor mobile header CSS", () => {
     expect(css).toContain("padding-bottom: calc(104px + env(safe-area-inset-bottom));");
   });
 });
+
+describe("BanjoTabEditor note selection CSS", () => {
+  it("renders selected notes with the same ring treatment as hover", () => {
+    expect(css).toContain(".banjo-tab-note[data-selected=\"true\"]");
+    expect(css).toContain("box-shadow: 0 0 0 3px var(--tab-drag-ring);");
+  });
+
+  it("keeps Add Measure as the right-most mobile action", () => {
+    expect(css).toContain(".banjo-tab-add-measure {\n  order: 20;");
+    expect(css).toContain(".banjo-tab-selection-mode-button {\n  order: 10;");
+  });
+});

@@ -47,6 +47,8 @@ type TabNoteProps = {
   onDeleteNoteByKeyboard: (noteId: string) => void;
   shouldSuppressClick: () => boolean;
   isDragging: boolean;
+  isSelected: boolean;
+  isNoteDragDisabled: boolean;
   mode: EditorMode;
 };
 
@@ -71,6 +73,8 @@ export function TabNote({
   onDeleteNoteByKeyboard,
   shouldSuppressClick,
   isDragging,
+  isSelected,
+  isNoteDragDisabled,
   mode,
 }: TabNoteProps) {
   const noteLabel = formatNoteLabel(note);
@@ -92,6 +96,10 @@ export function TabNote({
   };
 
   const handlePointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    if (isNoteDragDisabled) {
+      return;
+    }
+
     onNotePointerDown(note, location, event);
   };
 
@@ -148,6 +156,7 @@ export function TabNote({
           width: `max(1px, ${bounds.width}%)`,
         }}
         data-dragging={isDragging || undefined}
+        data-selected={isSelected || undefined}
         data-resizing={mode.type === "resizing-articulation" && mode.noteId === note.id ? true : undefined}
         onPointerOver={() => onQuickFretTarget(location)}
         onPointerOut={() => onQuickFretTargetClear(location)}
@@ -210,6 +219,7 @@ export function TabNote({
       style={{ left: `${slotToPercent(note.position, SLOTS_PER_MEASURE)}%` }}
       aria-label={`Edit fret ${noteLabel} on string ${note.stringIndex + 1}, slot ${note.position + 1}`}
       data-dragging={isDragging || undefined}
+      data-selected={isSelected || undefined}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       onPointerOver={() => onQuickFretTarget(location)}
