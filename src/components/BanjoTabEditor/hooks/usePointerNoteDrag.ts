@@ -4,6 +4,7 @@ import { SLOTS_PER_MEASURE } from "../constants";
 import {
   findNoteLocationFromPoint,
   isPointInsideRect,
+  xToNearestSlot,
   type StringTrackGeometry,
 } from "../geometry";
 import type { BanjoTabAction } from "../tabReducer";
@@ -19,6 +20,14 @@ type ActivePointer = {
   captureElement: HTMLElement;
 };
 
+type ActiveArticulationResize = {
+  note: TabNoteData;
+  location: NoteLocation;
+  edge: "start" | "end";
+  pointerId: number;
+  captureElement: HTMLElement;
+};
+
 type UsePointerNoteDragArgs = {
   state: BanjoTabEditorState;
   dispatch: Dispatch<BanjoTabAction>;
@@ -30,6 +39,7 @@ const TOUCH_LONG_PRESS_MS = 350;
 
 export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) {
   const activePointerRef = useRef<ActivePointer | null>(null);
+  const activeResizeRef = useRef<ActiveArticulationResize | null>(null);
   const stringTrackElementsRef = useRef(new Map<string, HTMLElement>());
   const trashElementRef = useRef<HTMLDivElement | null>(null);
   const suppressNextClickRef = useRef(false);
@@ -113,6 +123,40 @@ export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) 
     [startDragging],
   );
 
+  const handleArticulationResizePointerDown = useCallback(
+    (
+      note: TabNoteData,
+      location: NoteLocation,
+      edge: "start" | "end",
+      event: ReactPointerEvent<HTMLElement>,
+    ) => {
+      if (event.button !== 0) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      safeSetPointerCapture(event.currentTarget, event.pointerId);
+      activeResizeRef.current = {
+        note,
+        location,
+        edge,
+        pointerId: event.pointerId,
+        captureElement: event.currentTarget,
+      };
+
+      const point = getPointerPoint(event);
+      const currentPosition =
+        getSlotPositionForNote(point, location, stringTrackElementsRef.current) ??
+        getResizeEdgePosition(note, edge);
+      dispatch({
+        type: "SET_EDITOR_MODE",
+        mode: makeResizeMode(note, location, edge, currentPosition, point, event.pointerId),
+      });
+    },
+    [dispatch],
+  );
+
   const handleNotePointerMove = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
       const activePointer = activePointerRef.current;
@@ -155,6 +199,37 @@ export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) 
     [dispatch, startDragging],
   );
 
+  const handleArticulationResizePointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      const activeResize = activeResizeRef.current;
+
+      if (!activeResize || activeResize.pointerId !== event.pointerId) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const point = getPointerPoint(event);
+      const currentPosition =
+        getSlotPositionForNote(point, activeResize.location, stringTrackElementsRef.current) ??
+        getResizeEdgePosition(activeResize.note, activeResize.edge);
+
+      dispatch({
+        type: "SET_EDITOR_MODE",
+        mode: makeResizeMode(
+          activeResize.note,
+          activeResize.location,
+          activeResize.edge,
+          currentPosition,
+          point,
+          activeResize.pointerId,
+        ),
+      });
+    },
+    [dispatch],
+  );
+
   const handleNotePointerUp = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
       const activePointer = activePointerRef.current;
@@ -186,6 +261,36 @@ export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) 
     [dispatch],
   );
 
+  const handleArticulationResizePointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      const activeResize = activeResizeRef.current;
+
+      if (!activeResize || activeResize.pointerId !== event.pointerId) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      releaseResizePointerCapture(activeResize);
+
+      const point = getPointerPoint(event);
+      const targetPosition =
+        getSlotPositionForNote(point, activeResize.location, stringTrackElementsRef.current) ??
+        getResizeEdgePosition(activeResize.note, activeResize.edge);
+
+      dispatch({
+        type: "RESIZE_ARTICULATION_SPAN",
+        noteId: activeResize.note.id,
+        edge: activeResize.edge,
+        targetPosition,
+      });
+      dispatch({ type: "SET_EDITOR_MODE", mode: { type: "idle" } });
+
+      activeResizeRef.current = null;
+    },
+    [dispatch],
+  );
+
   const cancelDragging = useCallback(
     (event?: ReactPointerEvent<HTMLElement>) => {
       const activePointer = activePointerRef.current;
@@ -203,6 +308,21 @@ export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) 
       }
 
       activePointerRef.current = null;
+    },
+    [dispatch],
+  );
+
+  const cancelArticulationResize = useCallback(
+    (event?: ReactPointerEvent<HTMLElement>) => {
+      const activeResize = activeResizeRef.current;
+
+      if (!activeResize || (event && activeResize.pointerId !== event.pointerId)) {
+        return;
+      }
+
+      releaseResizePointerCapture(activeResize);
+      dispatch({ type: "SET_EDITOR_MODE", mode: { type: "idle" } });
+      activeResizeRef.current = null;
     },
     [dispatch],
   );
@@ -231,6 +351,21 @@ export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) 
     [dispatch, state.tab.tuning.length],
   );
 
+  const resizeArticulationByKeyboard = useCallback(
+    (note: TabNoteData, edge: "start" | "end", direction: "left" | "right") => {
+      const delta = direction === "left" ? -1 : 1;
+      const currentPosition = getResizeEdgePosition(note, edge);
+
+      dispatch({
+        type: "RESIZE_ARTICULATION_SPAN",
+        noteId: note.id,
+        edge,
+        targetPosition: currentPosition + delta,
+      });
+    },
+    [dispatch],
+  );
+
   return {
     registerStringTrack,
     registerTrashZone,
@@ -242,7 +377,15 @@ export function usePointerNoteDrag({ state, dispatch }: UsePointerNoteDragArgs) 
       onPointerCancel: cancelDragging,
       onLostPointerCapture: cancelDragging,
     },
+    articulationResizePointerHandlers: {
+      onPointerDown: handleArticulationResizePointerDown,
+      onPointerMove: handleArticulationResizePointerMove,
+      onPointerUp: handleArticulationResizePointerUp,
+      onPointerCancel: cancelArticulationResize,
+      onLostPointerCapture: cancelArticulationResize,
+    },
     moveNoteByKeyboard,
+    resizeArticulationByKeyboard,
     deleteNoteByKeyboard: (noteId: string) => dispatch({ type: "DELETE_NOTE", noteId }),
   };
 }
@@ -267,6 +410,58 @@ function getOverTrash(point: ScreenPoint, trashElement: HTMLDivElement | null): 
   return trashElement ? isPointInsideRect(point, trashElement.getBoundingClientRect()) : false;
 }
 
+function getSlotPositionForNote(
+  point: ScreenPoint,
+  location: NoteLocation,
+  trackElements: Map<string, HTMLElement>,
+): number | null {
+  const trackElement = trackElements.get(makeTrackKey(location.measureId, location.stringIndex));
+
+  if (!trackElement) {
+    return null;
+  }
+
+  const rect = trackElement.getBoundingClientRect();
+  return xToNearestSlot(point.x, {
+    left: rect.left,
+    width: rect.width,
+    slotCount: SLOTS_PER_MEASURE,
+  });
+}
+
+function makeResizeMode(
+  note: TabNoteData,
+  location: NoteLocation,
+  edge: "start" | "end",
+  currentPosition: number,
+  pointer: ScreenPoint,
+  pointerId: number,
+): BanjoTabEditorState["mode"] {
+  const startPosition = note.position;
+  const endPosition = note.position + getDefaultArticulationDuration(note) - 1;
+
+  return {
+    type: "resizing-articulation",
+    noteId: note.id,
+    edge,
+    measureId: location.measureId,
+    stringIndex: location.stringIndex,
+    startPosition,
+    endPosition,
+    currentPosition,
+    pointer,
+    pointerId,
+  };
+}
+
+function getResizeEdgePosition(note: TabNoteData, edge: "start" | "end") {
+  return edge === "start" ? note.position : note.position + getDefaultArticulationDuration(note) - 1;
+}
+
+function getDefaultArticulationDuration(note: TabNoteData) {
+  return note.durationSlots ?? Math.min(2, SLOTS_PER_MEASURE - note.position);
+}
+
 function getPointerPoint(event: ReactPointerEvent<HTMLElement>): ScreenPoint {
   return { x: event.clientX, y: event.clientY };
 }
@@ -285,6 +480,12 @@ function clearLongPressTimer(activePointer: ActivePointer) {
 function releasePointerCapture(activePointer: ActivePointer) {
   if (activePointer.captureElement.hasPointerCapture(activePointer.pointerId)) {
     activePointer.captureElement.releasePointerCapture(activePointer.pointerId);
+  }
+}
+
+function releaseResizePointerCapture(activeResize: ActiveArticulationResize) {
+  if (activeResize.captureElement.hasPointerCapture(activeResize.pointerId)) {
+    activeResize.captureElement.releasePointerCapture(activeResize.pointerId);
   }
 }
 

@@ -54,6 +54,21 @@ export function slotToPercent(position: number, slotCount: number): number {
   return ((clamp(position, 0, slotCount - 1) + 0.5) / slotCount) * 100;
 }
 
+export function slotSpanToPercentBounds(
+  position: number,
+  durationSlots: number,
+  slotCount: number,
+): { start: number; end: number; width: number } {
+  const start = slotToPercent(position, slotCount);
+  const end = slotToPercent(position + Math.max(durationSlots, 1) - 1, slotCount);
+
+  return {
+    start,
+    end,
+    width: Math.max(end - start, 0),
+  };
+}
+
 export function findNoteLocationFromPoint(
   point: ScreenPoint,
   tracks: StringTrackGeometry[],

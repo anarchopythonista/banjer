@@ -1,4 +1,10 @@
-import { createInitialTab, createMeasureWithId, createNoteId, getDefaultMeasureTitle } from "./constants";
+import {
+  createInitialTab,
+  createMeasureWithId,
+  createNoteId,
+  getDefaultMeasureTitle,
+  SLOTS_PER_MEASURE,
+} from "./constants";
 import type {
   BanjoTabEditorState,
   EditorMode,
@@ -18,6 +24,12 @@ export type BanjoTabAction =
       noteId?: string;
     }
   | { type: "MOVE_NOTE"; noteId: string; target: NoteLocation }
+  | {
+      type: "RESIZE_ARTICULATION_SPAN";
+      noteId: string;
+      edge: "start" | "end";
+      targetPosition: number;
+    }
   | { type: "DELETE_NOTE"; noteId: string }
   | { type: "MOVE_MEASURE"; measureId: string; targetIndex: number }
   | { type: "RENAME_MEASURE"; measureId: string; title: string }
@@ -68,6 +80,20 @@ export function banjoTabReducer(
         tab: {
           ...state.tab,
           measures: moveNote(state.tab.measures, action.noteId, action.target),
+        },
+      };
+
+    case "RESIZE_ARTICULATION_SPAN":
+      return {
+        ...state,
+        tab: {
+          ...state.tab,
+          measures: resizeArticulationSpan(
+            state.tab.measures,
+            action.noteId,
+            action.edge,
+            action.targetPosition,
+          ),
         },
       };
 
@@ -160,6 +186,7 @@ function updateMeasureNote(
         stringIndex: location.stringIndex,
         position: location.position,
         fret,
+        ...getDurationUpdate(location.position, articulation),
         ...(articulation ? { articulation } : {}),
       },
     ],
@@ -177,6 +204,7 @@ function makeUpdatedNote(
     stringIndex: location.stringIndex,
     position: location.position,
     fret,
+    ...getDurationUpdate(location.position, articulation, note.durationSlots),
     ...(articulation ? { articulation } : {}),
   };
 }
@@ -225,6 +253,73 @@ function moveNote(
 
 function noteMatchesLocation(note: TabNoteData, location: NoteLocation): boolean {
   return note.stringIndex === location.stringIndex && note.position === location.position;
+}
+
+function resizeArticulationSpan(
+  measures: TabMeasureData[],
+  noteId: string,
+  edge: "start" | "end",
+  targetPosition: number,
+): TabMeasureData[] {
+  return measures.map((measure) => ({
+    ...measure,
+    notes: measure.notes.map((note) => {
+      if (note.id !== noteId || !isTargetedArticulation(note.articulation)) {
+        return note;
+      }
+
+      const currentDuration = getClampedDuration(note.position, note.durationSlots ?? 2);
+      const currentEnd = note.position + currentDuration - 1;
+
+      if (edge === "start") {
+        const nextStart = clampSlot(targetPosition, 0, currentEnd);
+        return {
+          ...note,
+          position: nextStart,
+          durationSlots: currentEnd - nextStart + 1,
+        };
+      }
+
+      const nextEnd = clampSlot(targetPosition, note.position, SLOTS_PER_MEASURE - 1);
+      return {
+        ...note,
+        durationSlots: nextEnd - note.position + 1,
+      };
+    }),
+  }));
+}
+
+function getDurationUpdate(
+  position: number,
+  articulation?: TabArticulation,
+  currentDuration?: number,
+): Pick<TabNoteData, "durationSlots"> | Record<string, never> {
+  if (!isTargetedArticulation(articulation)) {
+    return {};
+  }
+
+  return {
+    durationSlots: getClampedDuration(position, currentDuration ?? 2),
+  };
+}
+
+function getClampedDuration(position: number, durationSlots: number): number {
+  return Math.max(1, Math.min(durationSlots, SLOTS_PER_MEASURE - position));
+}
+
+function isTargetedArticulation(
+  articulation?: TabArticulation,
+): articulation is Extract<TabArticulation, { targetFret: number }> {
+  return Boolean(
+    articulation &&
+      (articulation.type === "hammer-on" ||
+        articulation.type === "pull-off" ||
+        articulation.type === "slide"),
+  );
+}
+
+function clampSlot(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }
 
 function moveMeasure(

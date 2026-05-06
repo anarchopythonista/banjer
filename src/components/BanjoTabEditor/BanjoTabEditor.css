@@ -574,6 +574,130 @@
   box-shadow: 0 0 0 4px var(--tab-drag-ring);
 }
 
+.banjo-tab-note--articulation {
+  display: block;
+  min-width: 0;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  transform: translateY(-50%);
+  cursor: default;
+  overflow: visible;
+}
+
+.banjo-tab-note--articulation::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  background: var(--tab-accent);
+  opacity: 0.32;
+  transform: translateY(-50%);
+}
+
+.banjo-tab-note-edit {
+  position: absolute;
+  inset: 0 -14px;
+  z-index: 2;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.banjo-tab-note-edit:focus-visible {
+  outline: 3px solid var(--tab-focus);
+  outline-offset: 8px;
+}
+
+.banjo-tab-note-fret,
+.banjo-tab-note-operator {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  display: inline-grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.banjo-tab-note-fret {
+  min-width: 30px;
+  height: 28px;
+  padding: 0 7px;
+  border: 1px solid var(--tab-line);
+  border-radius: 999px;
+  color: var(--tab-ink);
+  background: var(--tab-note-bg);
+  box-sizing: border-box;
+}
+
+.banjo-tab-note-fret--start {
+  left: 0;
+}
+
+.banjo-tab-note-fret--end {
+  left: 100%;
+}
+
+.banjo-tab-note-operator {
+  left: 50%;
+  min-width: 22px;
+  height: 22px;
+  color: var(--tab-accent);
+  background: var(--tab-paper);
+  font-weight: 850;
+}
+
+.banjo-tab-note-resize {
+  position: absolute;
+  top: 50%;
+  z-index: 4;
+  width: 24px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  transform: translate(-50%, -50%);
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.banjo-tab-note-resize--start {
+  left: 0;
+}
+
+.banjo-tab-note-resize--end {
+  left: 100%;
+}
+
+.banjo-tab-note-resize::after {
+  content: "";
+  position: absolute;
+  inset: 8px 10px;
+  border-radius: 999px;
+  background: var(--tab-accent);
+  opacity: 0;
+}
+
+.banjo-tab-note-resize:hover::after,
+.banjo-tab-note-resize:focus-visible::after,
+.banjo-tab-note--articulation[data-resizing="true"] .banjo-tab-note-resize::after {
+  opacity: 0.75;
+}
+
+.banjo-tab-note-resize:focus-visible {
+  outline: 3px solid var(--tab-focus);
+  outline-offset: 2px;
+}
+
 .banjo-tab-slot-highlight {
   position: absolute;
   top: 50%;
@@ -592,12 +716,13 @@
   position: fixed;
   z-index: 20;
   width: min(var(--fret-picker-max-width, 316px), calc(100vw - (var(--fret-picker-margin, 16px) * 2)));
-  padding: 12px;
+  padding: 10px;
   border: 1px solid var(--tab-popover-border);
   border-radius: 8px;
   background: var(--tab-fret-bg);
   box-shadow: var(--tab-popover-shadow);
   transform: translate(-50%, 0);
+  overflow: hidden;
 }
 
 .banjo-tab-fret-picker,
@@ -612,19 +737,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   color: var(--tab-muted);
   font-size: 0.85rem;
   font-weight: 750;
   text-transform: uppercase;
 }
-
-/* .banjo-tab-fret-picker-source {
-  margin: -2px 0 10px;
-  color: var(--tab-accent);
-  font-size: 0.9rem;
-  font-weight: 750;
-} */
 
 .banjo-tab-fret-picker-heading button {
   display: inline-grid;
@@ -641,28 +759,43 @@
   font-weight: 800;
 }
 
+.banjo-tab-fret-picker-screen {
+  min-width: 0;
+  animation-duration: 150ms;
+  animation-timing-function: ease;
+}
+
+.banjo-tab-fret-picker[data-transition-direction="forward"] .banjo-tab-fret-picker-screen {
+  animation-name: banjo-tab-picker-slide-forward;
+}
+
+.banjo-tab-fret-picker[data-transition-direction="back"] .banjo-tab-fret-picker-screen {
+  animation-name: banjo-tab-picker-slide-back;
+}
+
 .banjo-tab-fret-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
 .banjo-tab-fret-option {
   display: inline-grid;
   place-items: center;
   min-width: 0;
-  min-height: 42px;
+  min-height: 36px;
   border: 1px solid var(--tab-border);
-  border-radius: 7px;
+  border-radius: 6px;
   color: var(--tab-ink);
   background: var(--tab-fret-option-bg);
   cursor: pointer;
   font: inherit;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 750;
 }
 
-.banjo-tab-fret-option:hover {
+.banjo-tab-fret-option:hover,
+.banjo-tab-fret-option[data-highlighted="true"] {
   border-color: var(--tab-accent);
   background: var(--tab-hover-bg);
 }
@@ -684,53 +817,95 @@
 .banjo-tab-fret-option:focus-visible,
 .banjo-tab-fret-picker-heading button:focus-visible,
 .banjo-tab-fret-more-button:focus-visible,
+.banjo-tab-fret-back-button:focus-visible,
 .banjo-tab-articulation-actions button:focus-visible {
   outline: 3px solid var(--tab-focus);
   outline-offset: 2px;
 }
 
-.banjo-tab-fret-more-button {
+.banjo-tab-fret-more-button,
+.banjo-tab-fret-back-button {
   width: 100%;
-  margin-top: 10px;
-  min-height: 38px;
+  margin-top: 8px;
+  min-height: 34px;
   border: 1px solid var(--tab-measure-handle-border);
-  border-radius: 7px;
+  border-radius: 6px;
   color: var(--tab-accent);
-  background: var(--tab-fret-option-bg);
+  background: transparent;
   cursor: pointer;
   font: inherit;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 750;
 }
 
-.banjo-tab-fret-more-button:hover {
+.banjo-tab-fret-more-button:hover,
+.banjo-tab-fret-back-button:hover {
   border-color: var(--tab-accent);
   background: var(--tab-hover-bg);
+}
+
+.banjo-tab-technique-screen {
+  min-width: 0;
 }
 
 .banjo-tab-articulation-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 10px;
+  gap: 6px;
 }
 
 .banjo-tab-articulation-actions button {
   min-width: 0;
-  min-height: 38px;
-  border: 1px solid var(--tab-border);
-  border-radius: 7px;
+  min-height: 36px;
+  border: 1px solid var(--tab-measure-handle-border);
+  border-radius: 6px;
   color: var(--tab-ink);
-  background: var(--tab-fret-option-bg);
+  background: transparent;
   cursor: pointer;
   font: inherit;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 750;
 }
 
 .banjo-tab-articulation-actions button:hover {
   border-color: var(--tab-accent);
   background: var(--tab-hover-bg);
+}
+
+@keyframes banjo-tab-picker-slide-forward {
+  from {
+    opacity: 0.86;
+    transform: translateX(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes banjo-tab-picker-slide-back {
+  from {
+    opacity: 0.86;
+    transform: translateX(-18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .banjo-tab-fret-picker-screen {
+    animation: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .banjo-tab-fret-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .banjo-tab-trash-zone {

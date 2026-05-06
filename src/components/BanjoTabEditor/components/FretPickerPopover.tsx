@@ -21,10 +21,12 @@ const LONG_PRESS_MS = 350;
 
 type TargetedArticulationType = "hammer-on" | "pull-off" | "slide";
 
-type PickerPhase =
-  | { type: "plain" }
-  | { type: "articulation-menu"; sourceFret: number }
-  | { type: "target"; sourceFret: number; articulation: TargetedArticulationType };
+type PickerMode =
+  | { type: "select-fret" }
+  | { type: "select-technique"; sourceFret: number }
+  | { type: "select-target-fret"; sourceFret: number; technique: TargetedArticulationType };
+
+type PickerTransitionDirection = "forward" | "back";
 
 type PopoverPosition = {
   left: number;
@@ -109,16 +111,17 @@ function FretPickerPopoverContent({
   const longPressTimerRef = useRef<number | null>(null);
   const longPressActivatedRef = useRef(false);
   const currentFret = currentNote?.fret;
-  const [phase, setPhase] = useState<PickerPhase>({ type: "plain" });
+  const [pickerMode, setPickerMode] = useState<PickerMode>({ type: "select-fret" });
+  const [transitionDirection, setTransitionDirection] = useState<PickerTransitionDirection>("forward");
   const [highlightedFret, setHighlightedFret] = useState(initialFret);
 
   useEffect(() => {
     const focusFrame = window.requestAnimationFrame(() => {
-      getInitialFocusTarget(popoverRef.current, phase, initialFret)?.focus();
+      getInitialFocusTarget(popoverRef.current, pickerMode, highlightedFret)?.focus();
     });
 
     return () => window.cancelAnimationFrame(focusFrame);
-  }, [initialFret, phase]);
+  }, [pickerMode]);
 
   useEffect(() => {
     const handlePointerDown = (event: PointerEvent) => {
@@ -143,9 +146,21 @@ function FretPickerPopoverContent({
     };
   }, [onClose]);
 
-  const label = getDialogLabel(phase, Boolean(currentNote));
-  const sourceFret = phase.type === "plain" ? highlightedFret : phase.sourceFret;
-  const enabledFrets = getEnabledFrets(phase);
+  const label = getDialogLabel(pickerMode, Boolean(currentNote));
+  const heading = getPickerHeading(pickerMode, label);
+  const sourceFret = pickerMode.type === "select-fret" ? highlightedFret : pickerMode.sourceFret;
+  const enabledFrets = getEnabledFrets(pickerMode);
+
+  const handlePopoverKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (pickerMode.type !== "select-fret" || !isSingleDigitShortcut(event)) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    onSelectFret(Number(event.key));
+  };
+
   const handleFretGridKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (!["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
       return;
@@ -154,8 +169,8 @@ function FretPickerPopoverContent({
     event.preventDefault();
 
     const activeIndex = fretButtonRefs.current.findIndex((button) => button === document.activeElement);
-    const currentIndex = activeIndex >= 0 ? activeIndex : currentFret ?? 0;
-    const columns = 6;
+    const currentIndex = activeIndex >= 0 ? activeIndex : highlightedFret;
+    const columns = getFretGridColumnCount();
     const nextIndexByKey: Record<string, number> = {
       ArrowRight: currentIndex + 1,
       ArrowLeft: currentIndex - 1,
@@ -172,22 +187,39 @@ function FretPickerPopoverContent({
     fretButtonRefs.current[nextIndex]?.focus();
   };
 
-  const openArticulationMenu = (fret: number) => {
+  const showTechniqueMode = (fret: number) => {
+    setTransitionDirection("forward");
     setHighlightedFret(fret);
-    setPhase({ type: "articulation-menu", sourceFret: fret });
+    setPickerMode({ type: "select-technique", sourceFret: fret });
   };
 
-  const handleMore = () => {
-    openArticulationMenu(sourceFret);
+  const handleAddTechnique = () => {
+    showTechniqueMode(sourceFret);
   };
 
-  const handleArticulation = (articulation: TargetedArticulationType | "bend") => {
-    if (articulation === "bend") {
+  const handleTechnique = (technique: TargetedArticulationType | "bend") => {
+    if (technique === "bend") {
       onSelectFret(sourceFret, { type: "bend" });
       return;
     }
 
-    setPhase({ type: "target", sourceFret, articulation });
+    setTransitionDirection("forward");
+    setPickerMode({ type: "select-target-fret", sourceFret, technique });
+  };
+
+  const handleBackToFrets = () => {
+    setTransitionDirection("back");
+    setHighlightedFret(sourceFret);
+    setPickerMode({ type: "select-fret" });
+  };
+
+  const handleBackToTechniques = () => {
+    if (pickerMode.type !== "select-target-fret") {
+      return;
+    }
+
+    setTransitionDirection("back");
+    setPickerMode({ type: "select-technique", sourceFret: pickerMode.sourceFret });
   };
 
   const handleFretClick = (fret: number) => {
@@ -196,20 +228,15 @@ function FretPickerPopoverContent({
       return;
     }
 
-    if (phase.type === "target") {
-      if (!isTargetFretAllowed(fret, phase)) {
+    if (pickerMode.type === "select-target-fret") {
+      if (!isTargetFretAllowed(fret, pickerMode)) {
         return;
       }
 
-      onSelectFret(phase.sourceFret, {
-        type: phase.articulation,
+      onSelectFret(pickerMode.sourceFret, {
+        type: pickerMode.technique,
         targetFret: fret,
       });
-      return;
-    }
-
-    if (phase.type === "articulation-menu") {
-      openArticulationMenu(fret);
       return;
     }
 
@@ -217,7 +244,7 @@ function FretPickerPopoverContent({
   };
 
   const handleFretPointerDown = (fret: number, event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (event.button !== 0) {
+    if (event.button !== 0 || pickerMode.type !== "select-fret") {
       return;
     }
 
@@ -225,12 +252,18 @@ function FretPickerPopoverContent({
     longPressActivatedRef.current = false;
     longPressTimerRef.current = window.setTimeout(() => {
       longPressActivatedRef.current = true;
-      openArticulationMenu(fret);
+      showTechniqueMode(fret);
     }, LONG_PRESS_MS);
   };
 
   const handleFretPointerEnd = () => {
     clearLongPressTimer(longPressTimerRef);
+  };
+
+  const handleFretPointerEnter = (fret: number) => {
+    if (!currentNote) {
+      setHighlightedFret(fret);
+    }
   };
 
   const popoverStyle: FretPickerStyle = {
@@ -248,80 +281,113 @@ function FretPickerPopoverContent({
       role="dialog"
       aria-modal="false"
       aria-label={label}
+      onKeyDown={handlePopoverKeyDown}
+      data-picker-mode={pickerMode.type}
+      data-transition-direction={transitionDirection}
     >
       <div className="banjo-tab-fret-picker-heading">
-        <span>{label}</span>
+        <span>{heading}</span>
         <button type="button" aria-label="Close fret picker" onClick={onClose}>
           x
         </button>
       </div>
-      <div
-        className="banjo-tab-fret-grid"
-        role="group"
-        aria-label={phase.type === "target" ? `${getArticulationLabel(phase.articulation)} target frets` : "Frets 0 through 22"}
-        onKeyDown={handleFretGridKeyDown}
-      >
-        {FRETS.map((fret) => {
-          const isAllowed = phase.type !== "target" || isTargetFretAllowed(fret, phase);
-          const isSource = fret === sourceFret && phase.type !== "plain";
-
-          return (
-            <button
-              key={fret}
-              ref={(button) => {
-                fretButtonRefs.current[fret] = button;
-              }}
-              type="button"
-              className="banjo-tab-fret-option"
-              data-fret={fret}
-              aria-label={getFretLabel(fret, phase, isAllowed)}
-              aria-pressed={fret === currentFret || isSource}
-              disabled={!isAllowed}
-              onFocus={() => setHighlightedFret(fret)}
-              onPointerEnter={() => setHighlightedFret(fret)}
-              onPointerDown={(event) => handleFretPointerDown(fret, event)}
-              onPointerUp={handleFretPointerEnd}
-              onPointerCancel={handleFretPointerEnd}
-              onPointerLeave={handleFretPointerEnd}
-              onClick={() => handleFretClick(fret)}
+      <div className="banjo-tab-fret-picker-screen">
+        {(pickerMode.type === "select-fret" || pickerMode.type === "select-target-fret") && (
+          <>
+            <div
+              className="banjo-tab-fret-grid"
+              role="group"
+              aria-label={
+                pickerMode.type === "select-target-fret"
+                  ? `${getTechniqueLabel(pickerMode.technique)} target frets`
+                  : "Frets 0 through 22"
+              }
+              onKeyDown={handleFretGridKeyDown}
             >
-              {fret}
-            </button>
-          );
-        })}
+              {FRETS.map((fret) => {
+                const isAllowed =
+                  pickerMode.type !== "select-target-fret" ||
+                  isTargetFretAllowed(fret, pickerMode);
+                const isSource =
+                  pickerMode.type === "select-target-fret" && fret === pickerMode.sourceFret;
+
+                return (
+                  <button
+                    key={fret}
+                    ref={(button) => {
+                      fretButtonRefs.current[fret] = button;
+                    }}
+                    type="button"
+                    className="banjo-tab-fret-option"
+                    data-fret={fret}
+                    data-highlighted={pickerMode.type === "select-fret" && fret === highlightedFret}
+                    aria-label={getFretLabel(fret, pickerMode, isAllowed)}
+                    aria-pressed={fret === currentFret || isSource}
+                    disabled={!isAllowed}
+                    onFocus={() => setHighlightedFret(fret)}
+                    onPointerEnter={() => handleFretPointerEnter(fret)}
+                    onPointerDown={(event) => handleFretPointerDown(fret, event)}
+                    onPointerUp={handleFretPointerEnd}
+                    onPointerCancel={handleFretPointerEnd}
+                    onPointerLeave={handleFretPointerEnd}
+                    onClick={() => handleFretClick(fret)}
+                  >
+                    {fret}
+                  </button>
+                );
+              })}
+            </div>
+            {pickerMode.type === "select-fret" && (
+              <button
+                type="button"
+                className="banjo-tab-fret-more-button"
+                aria-label={`Add technique for fret ${sourceFret}`}
+                onClick={handleAddTechnique}
+              >
+                Add technique
+              </button>
+            )}
+            {pickerMode.type === "select-target-fret" && (
+              <button
+                type="button"
+                className="banjo-tab-fret-back-button"
+                onClick={handleBackToTechniques}
+              >
+                Back
+              </button>
+            )}
+          </>
+        )}
+        {pickerMode.type === "select-technique" && (
+          <div className="banjo-tab-technique-screen">
+            <div className="banjo-tab-articulation-actions" aria-label="Techniques">
+              <button
+                data-fret-picker-articulation-button="true"
+                type="button"
+                onClick={() => handleTechnique("hammer-on")}
+              >
+                Hammer-on
+              </button>
+              <button type="button" onClick={() => handleTechnique("pull-off")}>
+                Pull-off
+              </button>
+              <button type="button" onClick={() => handleTechnique("slide")}>
+                Slide
+              </button>
+              <button
+                type="button"
+                aria-label="Bend, creates note immediately"
+                onClick={() => handleTechnique("bend")}
+              >
+                Bend
+              </button>
+              <button type="button" onClick={handleBackToFrets}>
+                Back
+              </button>
+            </div>
+          </div>
+        )}
       </div>
-      {phase.type === "plain" && (
-        <button
-          type="button"
-          className="banjo-tab-fret-more-button"
-          onClick={handleMore}
-        >
-          More for fret {sourceFret}
-        </button>
-      )}
-      {phase.type === "articulation-menu" && (
-        <div className="banjo-tab-articulation-actions" aria-label="Articulations">
-          <button
-            data-fret-picker-articulation-button="true"
-            type="button"
-            onClick={() => handleArticulation("hammer-on")}
-          >
-            Hammer-on
-          </button>
-          <button type="button" onClick={() => handleArticulation("pull-off")}>
-            Pull-off
-          </button>
-          <button type="button" onClick={() => handleArticulation("slide")}>
-            Slide
-          </button>
-          <button type="button" onClick={() => handleArticulation("bend")}>
-            Bend
-          </button>
-          <button type="button" onClick={() => setPhase({ type: "plain" })}>
-            Cancel
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -335,20 +401,20 @@ function clearLongPressTimer(ref: { current: number | null }) {
 
 function getInitialFocusTarget(
   popover: HTMLDivElement | null,
-  phase: PickerPhase,
+  pickerMode: PickerMode,
   currentFret: number,
 ) {
   if (!popover) {
     return null;
   }
 
-  if (phase.type === "articulation-menu") {
+  if (pickerMode.type === "select-technique") {
     return popover.querySelector<HTMLButtonElement>(
       "[data-fret-picker-articulation-button]",
     );
   }
 
-  if (phase.type === "target") {
+  if (pickerMode.type === "select-target-fret") {
     return popover.querySelector<HTMLButtonElement>(
       ".banjo-tab-fret-option:not(:disabled)",
     );
@@ -362,20 +428,32 @@ function getInitialFocusTarget(
   );
 }
 
-function getDialogLabel(phase: PickerPhase, hasCurrentNote: boolean) {
-  if (phase.type === "articulation-menu") {
-    return "Choose articulation";
+function getDialogLabel(pickerMode: PickerMode, hasCurrentNote: boolean) {
+  if (pickerMode.type === "select-technique") {
+    return "Choose technique";
   }
 
-  if (phase.type === "target") {
-    return `Choose ${getArticulationLabel(phase.articulation)} target`;
+  if (pickerMode.type === "select-target-fret") {
+    return `Choose ${getTechniqueLabel(pickerMode.technique)} target`;
   }
 
   return hasCurrentNote ? "Edit fret" : "Choose fret";
 }
 
-function getArticulationLabel(articulation: TargetedArticulationType) {
-  switch (articulation) {
+function getPickerHeading(pickerMode: PickerMode, label: string) {
+  if (pickerMode.type === "select-technique") {
+    return `Fret ${pickerMode.sourceFret}`;
+  }
+
+  if (pickerMode.type === "select-target-fret") {
+    return `${pickerMode.sourceFret}${getTechniqueSymbol(pickerMode.technique)}... choose target`;
+  }
+
+  return label;
+}
+
+function getTechniqueLabel(technique: TargetedArticulationType) {
+  switch (technique) {
     case "hammer-on":
       return "Hammer-on";
     case "pull-off":
@@ -385,8 +463,19 @@ function getArticulationLabel(articulation: TargetedArticulationType) {
   }
 }
 
-function getFretLabel(fret: number, phase: PickerPhase, isAllowed: boolean) {
-  if (phase.type !== "target") {
+function getTechniqueSymbol(technique: TargetedArticulationType) {
+  switch (technique) {
+    case "hammer-on":
+      return "h";
+    case "pull-off":
+      return "p";
+    case "slide":
+      return "/";
+  }
+}
+
+function getFretLabel(fret: number, pickerMode: PickerMode, isAllowed: boolean) {
+  if (pickerMode.type !== "select-target-fret") {
     return `Fret ${fret}`;
   }
 
@@ -394,15 +483,15 @@ function getFretLabel(fret: number, phase: PickerPhase, isAllowed: boolean) {
     return `Fret ${fret}`;
   }
 
-  return `Fret ${fret} unavailable for ${getArticulationLabel(phase.articulation)} target`;
+  return `Fret ${fret} unavailable for ${getTechniqueLabel(pickerMode.technique)} target`;
 }
 
-function getEnabledFrets(phase: PickerPhase) {
-  if (phase.type !== "target") {
+function getEnabledFrets(pickerMode: PickerMode) {
+  if (pickerMode.type !== "select-target-fret") {
     return FRETS;
   }
 
-  return FRETS.filter((fret) => isTargetFretAllowed(fret, phase));
+  return FRETS.filter((fret) => isTargetFretAllowed(fret, pickerMode));
 }
 
 function findFocusableFret(startIndex: number, direction: 1 | -1, enabledFrets: number[]) {
@@ -419,13 +508,29 @@ function findFocusableFret(startIndex: number, direction: 1 | -1, enabledFrets: 
   return sortedFrets.find((fret) => fret > startIndex) ?? sortedFrets[sortedFrets.length - 1] ?? 0;
 }
 
-function isTargetFretAllowed(fret: number, phase: Extract<PickerPhase, { type: "target" }>) {
-  switch (phase.articulation) {
+function getFretGridColumnCount() {
+  return window.matchMedia("(max-width: 420px)").matches ? 4 : 6;
+}
+
+function isTargetFretAllowed(fret: number, pickerMode: Extract<PickerMode, { type: "select-target-fret" }>) {
+  switch (pickerMode.technique) {
     case "hammer-on":
-      return fret > phase.sourceFret;
+      return fret > pickerMode.sourceFret;
     case "pull-off":
-      return fret < phase.sourceFret;
+      return fret < pickerMode.sourceFret;
     case "slide":
-      return fret !== phase.sourceFret;
+      return fret !== pickerMode.sourceFret;
   }
+}
+
+function isSingleDigitShortcut(event: ReactKeyboardEvent): boolean {
+  return (
+    !event.repeat &&
+    !event.altKey &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    event.key.length === 1 &&
+    event.key >= "0" &&
+    event.key <= "9"
+  );
 }

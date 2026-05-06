@@ -102,10 +102,17 @@ export function TabStringRow({
             onNotePointerUp={dragApi.notePointerHandlers.onPointerUp}
             onNotePointerCancel={dragApi.notePointerHandlers.onPointerCancel}
             onNoteLostPointerCapture={dragApi.notePointerHandlers.onLostPointerCapture}
+            onArticulationResizePointerDown={dragApi.articulationResizePointerHandlers.onPointerDown}
+            onArticulationResizePointerMove={dragApi.articulationResizePointerHandlers.onPointerMove}
+            onArticulationResizePointerUp={dragApi.articulationResizePointerHandlers.onPointerUp}
+            onArticulationResizePointerCancel={dragApi.articulationResizePointerHandlers.onPointerCancel}
+            onArticulationResizeLostPointerCapture={dragApi.articulationResizePointerHandlers.onLostPointerCapture}
             onMoveNoteByKeyboard={dragApi.moveNoteByKeyboard}
+            onResizeArticulationByKeyboard={dragApi.resizeArticulationByKeyboard}
             onDeleteNoteByKeyboard={dragApi.deleteNoteByKeyboard}
             shouldSuppressClick={dragApi.shouldSuppressClick}
             isDragging={mode.type === "dragging-note" && mode.noteId === note.id}
+            mode={mode}
           />
         ))}
       </div>

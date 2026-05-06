@@ -1,8 +1,8 @@
 import type { KeyboardEvent, MouseEvent, PointerEvent } from "react";
 import { SLOTS_PER_MEASURE } from "../constants";
-import { slotToPercent } from "../geometry";
-import { formatNoteLabel } from "../noteFormatting";
-import type { NoteLocation, TabNoteData } from "../types";
+import { slotSpanToPercentBounds, slotToPercent } from "../geometry";
+import { formatTargetedArticulationParts, formatNoteLabel } from "../noteFormatting";
+import type { EditorMode, NoteLocation, TabNoteData } from "../types";
 
 type TabNoteProps = {
   note: TabNoteData;
@@ -24,14 +24,30 @@ type TabNoteProps = {
   onNotePointerUp: (event: PointerEvent<HTMLButtonElement>) => void;
   onNotePointerCancel: (event: PointerEvent<HTMLButtonElement>) => void;
   onNoteLostPointerCapture: (event: PointerEvent<HTMLButtonElement>) => void;
+  onArticulationResizePointerDown: (
+    note: TabNoteData,
+    location: NoteLocation,
+    edge: "start" | "end",
+    event: PointerEvent<HTMLButtonElement>,
+  ) => void;
+  onArticulationResizePointerMove: (event: PointerEvent<HTMLButtonElement>) => void;
+  onArticulationResizePointerUp: (event: PointerEvent<HTMLButtonElement>) => void;
+  onArticulationResizePointerCancel: (event: PointerEvent<HTMLButtonElement>) => void;
+  onArticulationResizeLostPointerCapture: (event: PointerEvent<HTMLButtonElement>) => void;
   onMoveNoteByKeyboard: (
     note: TabNoteData,
     location: NoteLocation,
     direction: "up" | "down" | "left" | "right",
   ) => void;
+  onResizeArticulationByKeyboard: (
+    note: TabNoteData,
+    edge: "start" | "end",
+    direction: "left" | "right",
+  ) => void;
   onDeleteNoteByKeyboard: (noteId: string) => void;
   shouldSuppressClick: () => boolean;
   isDragging: boolean;
+  mode: EditorMode;
 };
 
 export function TabNote({
@@ -45,12 +61,21 @@ export function TabNote({
   onNotePointerUp,
   onNotePointerCancel,
   onNoteLostPointerCapture,
+  onArticulationResizePointerDown,
+  onArticulationResizePointerMove,
+  onArticulationResizePointerUp,
+  onArticulationResizePointerCancel,
+  onArticulationResizeLostPointerCapture,
   onMoveNoteByKeyboard,
+  onResizeArticulationByKeyboard,
   onDeleteNoteByKeyboard,
   shouldSuppressClick,
   isDragging,
+  mode,
 }: TabNoteProps) {
   const noteLabel = formatNoteLabel(note);
+  const targetedArticulationParts = formatTargetedArticulationParts(note);
+  const renderedSpan = getRenderedSpan(note, mode);
   const location = {
     measureId,
     stringIndex: note.stringIndex,
@@ -90,6 +115,94 @@ export function TabNote({
     }
   };
 
+  const handleResizeKeyDown =
+    (edge: "start" | "end") => (event: KeyboardEvent<HTMLButtonElement>) => {
+      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        event.preventDefault();
+        event.stopPropagation();
+        onResizeArticulationByKeyboard(
+          note,
+          edge,
+          event.key === "ArrowLeft" ? "left" : "right",
+        );
+      }
+    };
+
+  const handleResizePointerDown =
+    (edge: "start" | "end") => (event: PointerEvent<HTMLButtonElement>) => {
+      onArticulationResizePointerDown(note, location, edge, event);
+    };
+
+  if (targetedArticulationParts && renderedSpan.durationSlots > 1) {
+    const bounds = slotSpanToPercentBounds(
+      renderedSpan.position,
+      renderedSpan.durationSlots,
+      SLOTS_PER_MEASURE,
+    );
+
+    return (
+      <span
+        className="banjo-tab-note banjo-tab-note--articulation"
+        style={{
+          left: `${bounds.start}%`,
+          width: `max(1px, ${bounds.width}%)`,
+        }}
+        data-dragging={isDragging || undefined}
+        data-resizing={mode.type === "resizing-articulation" && mode.noteId === note.id ? true : undefined}
+        onPointerOver={() => onQuickFretTarget(location)}
+        onPointerOut={() => onQuickFretTargetClear(location)}
+        onFocus={() => onQuickFretTarget(location)}
+        onBlur={() => onQuickFretTargetClear(location)}
+      >
+        <button
+          type="button"
+          className="banjo-tab-note-edit"
+          aria-label={`Edit fret ${noteLabel} on string ${note.stringIndex + 1}, slots ${renderedSpan.position + 1} through ${renderedSpan.position + renderedSpan.durationSlots}`}
+          onClick={handleClick}
+          onKeyDown={handleKeyDown}
+          onPointerDown={handlePointerDown}
+          onPointerMove={onNotePointerMove}
+          onPointerUp={onNotePointerUp}
+          onPointerCancel={onNotePointerCancel}
+          onLostPointerCapture={onNoteLostPointerCapture}
+        />
+        <span className="banjo-tab-note-fret banjo-tab-note-fret--start" aria-hidden="true">
+          {targetedArticulationParts.source}
+        </span>
+        <span className="banjo-tab-note-operator" aria-hidden="true">
+          {targetedArticulationParts.operator}
+        </span>
+        <span className="banjo-tab-note-fret banjo-tab-note-fret--end" aria-hidden="true">
+          {targetedArticulationParts.target}
+        </span>
+        <button
+          type="button"
+          className="banjo-tab-note-resize banjo-tab-note-resize--start"
+          aria-label={`Resize start of fret ${noteLabel}`}
+          onKeyDown={handleResizeKeyDown("start")}
+          onPointerDown={handleResizePointerDown("start")}
+          onPointerMove={onArticulationResizePointerMove}
+          onPointerUp={onArticulationResizePointerUp}
+          onPointerCancel={onArticulationResizePointerCancel}
+          onLostPointerCapture={onArticulationResizeLostPointerCapture}
+          onClick={(event) => event.stopPropagation()}
+        />
+        <button
+          type="button"
+          className="banjo-tab-note-resize banjo-tab-note-resize--end"
+          aria-label={`Resize end of fret ${noteLabel}`}
+          onKeyDown={handleResizeKeyDown("end")}
+          onPointerDown={handleResizePointerDown("end")}
+          onPointerMove={onArticulationResizePointerMove}
+          onPointerUp={onArticulationResizePointerUp}
+          onPointerCancel={onArticulationResizePointerCancel}
+          onLostPointerCapture={onArticulationResizeLostPointerCapture}
+          onClick={(event) => event.stopPropagation()}
+        />
+      </span>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -112,6 +225,33 @@ export function TabNote({
       {noteLabel}
     </button>
   );
+}
+
+function getRenderedSpan(note: TabNoteData, mode: EditorMode) {
+  if (mode.type !== "resizing-articulation" || mode.noteId !== note.id) {
+    return {
+      position: note.position,
+      durationSlots: getDefaultRenderDuration(note),
+    };
+  }
+
+  const startPosition =
+    mode.edge === "start"
+      ? Math.min(mode.currentPosition, mode.endPosition)
+      : mode.startPosition;
+  const endPosition =
+    mode.edge === "end"
+      ? Math.max(mode.currentPosition, mode.startPosition)
+      : mode.endPosition;
+
+  return {
+    position: startPosition,
+    durationSlots: endPosition - startPosition + 1,
+  };
+}
+
+function getDefaultRenderDuration(note: TabNoteData) {
+  return note.durationSlots ?? Math.min(2, SLOTS_PER_MEASURE - note.position);
 }
 
 function getEventPoint(event: MouseEvent<HTMLElement>) {

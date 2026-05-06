@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatNoteLabel } from "./noteFormatting";
+import { formatTargetedArticulationParts, formatNoteLabel } from "./noteFormatting";
 
 describe("note formatting", () => {
   it("formats plain and articulated note labels", () => {
@@ -46,5 +46,23 @@ describe("note formatting", () => {
       fret: 10,
       articulation: { type: "hammer-on", targetFret: 12 },
     })).toBe("10h12");
+  });
+
+  it("returns source, operator, and target parts for targeted articulations", () => {
+    expect(formatTargetedArticulationParts({
+      id: "note-1",
+      stringIndex: 0,
+      position: 0,
+      fret: 3,
+      articulation: { type: "slide", targetFret: 5 },
+    })).toEqual({ source: "3", operator: "/", target: "5" });
+
+    expect(formatTargetedArticulationParts({
+      id: "note-2",
+      stringIndex: 0,
+      position: 0,
+      fret: 7,
+      articulation: { type: "bend" },
+    })).toBeNull();
   });
 });

@@ -28,6 +28,7 @@ export type TabNoteData = {
   stringIndex: number;
   position: number;
   fret: number;
+  durationSlots?: number;
   articulation?: TabArticulation;
 };
 
@@ -58,6 +59,18 @@ export type EditorMode =
       pointer: ScreenPoint;
       pointerId?: number;
       overTrash: boolean;
+    }
+  | {
+      type: "resizing-articulation";
+      noteId: string;
+      edge: "start" | "end";
+      measureId: string;
+      stringIndex: number;
+      startPosition: number;
+      endPosition: number;
+      currentPosition: number;
+      pointer: ScreenPoint;
+      pointerId?: number;
     }
   | {
       type: "dragging-measure";

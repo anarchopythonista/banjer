@@ -40,6 +40,7 @@ describe("banjoTabReducer", () => {
         stringIndex: 0,
         position: 4,
         fret: 2,
+        durationSlots: 2,
         articulation: { type: "hammer-on", targetFret: 4 },
       },
     ]);
@@ -63,7 +64,91 @@ describe("banjoTabReducer", () => {
         stringIndex: 0,
         position: 4,
         fret,
+        ...(articulation.type === "bend" ? {} : { durationSlots: 2 }),
         articulation,
+      },
+    ]);
+  });
+
+  it("clamps a new targeted articulation span at the end of the measure", () => {
+    const state = reducerWith(baseState(), {
+      type: "ADD_OR_UPDATE_NOTE",
+      location: location(0, 15),
+      fret: 10,
+      articulation: { type: "slide", targetFret: 12 },
+    });
+
+    expect(state.tab.measures[0].notes).toMatchObject([
+      {
+        stringIndex: 0,
+        position: 15,
+        fret: 10,
+        durationSlots: 1,
+        articulation: { type: "slide", targetFret: 12 },
+      },
+    ]);
+  });
+
+  it("resizes an articulated note from the right edge", () => {
+    const state = reducerWith(
+      stateWithNotes([
+        {
+          id: "note-1",
+          stringIndex: 0,
+          position: 4,
+          fret: 2,
+          durationSlots: 2,
+          articulation: { type: "hammer-on", targetFret: 4 },
+        },
+      ]),
+      {
+        type: "RESIZE_ARTICULATION_SPAN",
+        noteId: "note-1",
+        edge: "end",
+        targetPosition: 7,
+      } as never,
+    );
+
+    expect(state.tab.measures[0].notes).toEqual([
+      {
+        id: "note-1",
+        stringIndex: 0,
+        position: 4,
+        fret: 2,
+        durationSlots: 4,
+        articulation: { type: "hammer-on", targetFret: 4 },
+      },
+    ]);
+  });
+
+  it("resizes an articulated note from the left edge", () => {
+    const state = reducerWith(
+      stateWithNotes([
+        {
+          id: "note-1",
+          stringIndex: 0,
+          position: 4,
+          fret: 2,
+          durationSlots: 4,
+          articulation: { type: "slide", targetFret: 5 },
+        },
+      ]),
+      {
+        type: "RESIZE_ARTICULATION_SPAN",
+        noteId: "note-1",
+        edge: "start",
+        targetPosition: 2,
+      } as never,
+    );
+
+    expect(state.tab.measures[0].notes).toEqual([
+      {
+        id: "note-1",
+        stringIndex: 0,
+        position: 2,
+        fret: 2,
+        durationSlots: 6,
+        articulation: { type: "slide", targetFret: 5 },
       },
     ]);
   });

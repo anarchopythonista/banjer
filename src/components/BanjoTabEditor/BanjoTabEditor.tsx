@@ -417,6 +417,7 @@ function getTrashDropZoneState(
         label: "Drop note to delete",
       };
     case "fret-picker":
+    case "resizing-articulation":
     case "idle":
       return {
         isActive: false,

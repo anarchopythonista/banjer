@@ -180,7 +180,9 @@ export const PlainNotePicker: Story = {
   },
   play: async ({ canvas }) => {
     await expect(canvas.getByRole("dialog", { name: "Choose fret" })).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: "More for fret 0" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Add technique for fret 0" })).toBeInTheDocument();
+    await userEvent.hover(canvas.getByRole("button", { name: "Fret 7" }));
+    await expect(canvas.getByRole("button", { name: "Add technique for fret 7" })).toBeInTheDocument();
   },
 };
 
@@ -189,12 +191,15 @@ export const ArticulationMenuOpen: Story = {
     initialState: editorStateWithOpenPicker(2),
   },
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "More for fret 2" }));
-    await expect(canvas.getByRole("dialog", { name: "Choose articulation" })).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole("button", { name: "Add technique for fret 2" }));
+    await expect(canvas.getByRole("dialog", { name: "Choose technique" })).toBeInTheDocument();
+    await expect(canvas.getByText("Fret 2")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Hammer-on" })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Pull-off" })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Slide" })).toBeInTheDocument();
-    await expect(canvas.getByRole("button", { name: "Bend" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Bend, creates note immediately" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Back" })).toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Fret 0" })).not.toBeInTheDocument();
   },
 };
 
@@ -203,9 +208,11 @@ export const HammerOnTargetSelection: Story = {
     initialState: editorStateWithOpenPicker(2),
   },
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "More for fret 2" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Add technique for fret 2" }));
     await userEvent.click(canvas.getByRole("button", { name: "Hammer-on" }));
     await expect(canvas.getByRole("dialog", { name: "Choose Hammer-on target" })).toBeInTheDocument();
+    await expect(canvas.getByText("2h... choose target")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Back" })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Fret 2 unavailable for Hammer-on target" })).toBeDisabled();
     await expect(canvas.getByRole("button", { name: "Fret 4" })).toBeEnabled();
   },
@@ -216,9 +223,10 @@ export const PullOffTargetSelection: Story = {
     initialState: editorStateWithOpenPicker(4),
   },
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "More for fret 4" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Add technique for fret 4" }));
     await userEvent.click(canvas.getByRole("button", { name: "Pull-off" }));
     await expect(canvas.getByRole("dialog", { name: "Choose Pull-off target" })).toBeInTheDocument();
+    await expect(canvas.getByText("4p... choose target")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Fret 2" })).toBeEnabled();
     await expect(canvas.getByRole("button", { name: "Fret 4 unavailable for Pull-off target" })).toBeDisabled();
   },
@@ -229,11 +237,14 @@ export const SlideTargetSelection: Story = {
     initialState: editorStateWithOpenPicker(5),
   },
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "More for fret 5" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Add technique for fret 5" }));
     await userEvent.click(canvas.getByRole("button", { name: "Slide" }));
     await expect(canvas.getByRole("dialog", { name: "Choose Slide target" })).toBeInTheDocument();
+    await expect(canvas.getByText("5/... choose target")).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Fret 2" })).toBeEnabled();
     await expect(canvas.getByRole("button", { name: "Fret 5 unavailable for Slide target" })).toBeDisabled();
+    await userEvent.click(canvas.getByRole("button", { name: "Back" }));
+    await expect(canvas.getByRole("dialog", { name: "Choose technique" })).toBeInTheDocument();
   },
 };
 
@@ -267,10 +278,10 @@ export const MixedArticulatedNotes: Story = {
       {
         id: "measure-1",
         notes: [
-          { id: "note-1", stringIndex: 0, position: 1, fret: 2, articulation: { type: "hammer-on", targetFret: 4 } },
+          { id: "note-1", stringIndex: 0, position: 1, fret: 2, durationSlots: 2, articulation: { type: "hammer-on", targetFret: 4 } },
           { id: "note-2", stringIndex: 1, position: 4, fret: 4, articulation: { type: "pull-off", targetFret: 2 } },
-          { id: "note-3", stringIndex: 2, position: 7, fret: 2, articulation: { type: "slide", targetFret: 5 } },
-          { id: "note-4", stringIndex: 3, position: 10, fret: 5, articulation: { type: "slide", targetFret: 2 } },
+          { id: "note-3", stringIndex: 2, position: 7, fret: 2, durationSlots: 3, articulation: { type: "slide", targetFret: 5 } },
+          { id: "note-4", stringIndex: 3, position: 10, fret: 5, durationSlots: 4, articulation: { type: "slide", targetFret: 2 } },
           { id: "note-5", stringIndex: 4, position: 13, fret: 7, articulation: { type: "bend" } },
           { id: "note-6", stringIndex: 0, position: 15, fret: 10, articulation: { type: "hammer-on", targetFret: 12 } },
         ],
@@ -278,7 +289,8 @@ export const MixedArticulatedNotes: Story = {
     ]),
   },
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole("button", { name: "Edit fret 2h4 on string 1, slot 2" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Edit fret 2h4 on string 1, slots 2 through 3" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Resize end of fret 2h4" })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Edit fret 10h12 on string 1, slot 16" })).toBeInTheDocument();
   },
 };
@@ -348,6 +360,23 @@ export const CreateNoteInteraction: Story = {
   },
 };
 
+export const FretPickerDigitEntryInteraction: Story = {
+  args: {
+    initialState: makeEditorState([{ id: "measure-1", notes: [] }]),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByLabelText("Set string 1 slot 1"));
+    await expect(canvas.getByRole("dialog", { name: "Choose fret" })).toBeInTheDocument();
+
+    const initiallyFocusedFret = canvas.getByRole("button", { name: "Fret 0" });
+    initiallyFocusedFret.focus();
+    fireEvent.keyDown(initiallyFocusedFret, { key: "6" });
+
+    await expect(canvas.getByRole("button", { name: "Edit fret 6 on string 1, slot 1" })).toBeInTheDocument();
+    await expect(canvas.queryByRole("dialog", { name: "Choose fret" })).not.toBeInTheDocument();
+  },
+};
+
 export const EditNoteInteraction: Story = {
   args: {
     initialState: makeEditorState([
@@ -360,7 +389,15 @@ export const EditNoteInteraction: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Edit fret 2 on string 1, slot 1" }));
     await expect(canvas.getByRole("dialog", { name: "Edit fret" })).toBeInTheDocument();
-    await userEvent.click(canvas.getByRole("button", { name: "Fret 7" }));
+    const fretSevenButton = canvas.getByRole("button", { name: "Fret 7" });
+
+    await userEvent.hover(fretSevenButton);
+    await expect(canvas.getByRole("button", { name: "Add technique for fret 2" })).toBeInTheDocument();
+
+    fireEvent.focusIn(fretSevenButton);
+    await expect(canvas.getByRole("button", { name: "Add technique for fret 7" })).toBeInTheDocument();
+
+    await userEvent.click(fretSevenButton);
     await expect(canvas.getByRole("button", { name: "Edit fret 7 on string 1, slot 1" })).toBeInTheDocument();
   },
 };
@@ -476,6 +513,44 @@ export const DraggingOverOccupiedNoteVisualState: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByRole("button", { name: "Edit fret 2 on string 1, slot 5" })).toBeInTheDocument();
     await expect(canvas.getByRole("button", { name: "Edit fret 5 on string 3, slot 10" })).toBeInTheDocument();
+  },
+};
+
+export const ResizingArticulationVisualState: Story = {
+  args: {
+    initialState: {
+      ...makeEditorState([
+        {
+          id: "measure-1",
+          notes: [
+            {
+              id: "note-1",
+              stringIndex: 2,
+              position: 4,
+              fret: 3,
+              durationSlots: 2,
+              articulation: { type: "slide", targetFret: 5 },
+            },
+          ],
+        },
+      ]),
+      mode: {
+        type: "resizing-articulation",
+        noteId: "note-1",
+        edge: "end",
+        measureId: "measure-1",
+        stringIndex: 2,
+        startPosition: 4,
+        endPosition: 5,
+        currentPosition: 7,
+        pointer: { x: 520, y: 310 },
+      },
+    },
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("button", { name: "Edit fret 3/5 on string 3, slots 5 through 8" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Resize start of fret 3/5" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Resize end of fret 3/5" })).toBeInTheDocument();
   },
 };
 
@@ -795,8 +870,8 @@ export const MobileNarrowArticulatedNotes: Story = {
       {
         id: "measure-1",
         notes: [
-          { id: "note-1", stringIndex: 0, position: 1, fret: 2, articulation: { type: "hammer-on", targetFret: 4 } },
-          { id: "note-2", stringIndex: 2, position: 7, fret: 5, articulation: { type: "slide", targetFret: 2 } },
+          { id: "note-1", stringIndex: 0, position: 1, fret: 2, durationSlots: 2, articulation: { type: "hammer-on", targetFret: 4 } },
+          { id: "note-2", stringIndex: 2, position: 7, fret: 5, durationSlots: 3, articulation: { type: "slide", targetFret: 2 } },
           { id: "note-3", stringIndex: 4, position: 14, fret: 7, articulation: { type: "bend" } },
         ],
       },
@@ -806,6 +881,10 @@ export const MobileNarrowArticulatedNotes: Story = {
     viewport: {
       defaultViewport: "mobile1",
     },
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("button", { name: "Edit fret 2h4 on string 1, slots 2 through 3" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Edit fret 5\\2 on string 3, slots 8 through 10" })).toBeInTheDocument();
   },
 };
 

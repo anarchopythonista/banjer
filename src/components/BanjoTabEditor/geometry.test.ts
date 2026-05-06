@@ -4,6 +4,7 @@ import {
   findMeasureDropIndexFromPoint,
   findNoteLocationFromPoint,
   isPointInsideRect,
+  slotSpanToPercentBounds,
   slotToPercent,
   xToNearestSlot,
 } from "./geometry";
@@ -28,6 +29,19 @@ describe("BanjoTabEditor geometry", () => {
     expect(slotToPercent(0, 16)).toBeCloseTo(3.125);
     expect(slotToPercent(7, 16)).toBeCloseTo(46.875);
     expect(slotToPercent(15, 16)).toBeCloseTo(96.875);
+  });
+
+  it("maps a slot span to start and end slot centers", () => {
+    expect(slotSpanToPercentBounds(4, 2, 16)).toEqual({
+      start: 28.125,
+      end: 34.375,
+      width: 6.25,
+    });
+    expect(slotSpanToPercentBounds(4, 3, 16)).toEqual({
+      start: 28.125,
+      end: 40.625,
+      width: 12.5,
+    });
   });
 
   it("maps a pointer point to a measure, string, and slot target", () => {
