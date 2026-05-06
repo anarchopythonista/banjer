@@ -43,6 +43,40 @@ export type ScreenPoint = {
   y: number;
 };
 
+export type SelectionPoint = {
+  stringIndex: number;
+  position: number;
+};
+
+export type SelectionBounds = {
+  measureId: string;
+  minStringIndex: number;
+  maxStringIndex: number;
+  minPosition: number;
+  maxPosition: number;
+};
+
+export type PasteTarget = {
+  measureId: string;
+  position: number;
+};
+
+export type CopiedNote = {
+  stringIndex: number;
+  positionOffset: number;
+  fret: number;
+  durationSlots?: number;
+  articulation?: TabArticulation;
+};
+
+export type CopiedNoteSelection = {
+  sourceMeasureId: string;
+  sourceNoteIds: string[];
+  minPosition: number;
+  maxPosition: number;
+  notes: CopiedNote[];
+};
+
 export type EditorMode =
   | { type: "idle" }
   | {
@@ -80,6 +114,19 @@ export type EditorMode =
       pointer: ScreenPoint;
       pointerId?: number;
       overTrash: boolean;
+    }
+  | {
+      type: "selecting-notes";
+      measureId: string;
+      start: SelectionPoint;
+      current: SelectionPoint;
+      pointer: ScreenPoint;
+      pointerId?: number;
+    }
+  | {
+      type: "paste-preview";
+      target: PasteTarget | null;
+      pointer: ScreenPoint | null;
     };
 
 export type BanjoTabEditorState = {
