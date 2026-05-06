@@ -637,6 +637,177 @@ export const DraggingMeasureVisualState: Story = {
   },
 };
 
+export const SelectingNotesVisualState: Story = {
+  args: {
+    initialState: {
+      ...selectionEditorState(),
+      mode: {
+        type: "selecting-notes",
+        measureId: "measure-1",
+        start: { stringIndex: 0, position: 4 },
+        current: { stringIndex: 3, position: 7 },
+        pointer: { x: 460, y: 280 },
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await expect(canvasElement.querySelector(".banjo-tab-selection-region")).toBeInTheDocument();
+  },
+};
+
+export const SelectAndCopyNotesInteraction: Story = {
+  args: {
+    initialState: selectionEditorState(),
+  },
+  play: async ({ canvas, canvasElement }) => {
+    const startSlot = canvas.getAllByLabelText("Set string 1 slot 5")[0];
+    const endSlot = canvas.getAllByLabelText("Set string 4 slot 8")[0];
+    const previewTarget = canvas.getAllByLabelText("Set string 1 slot 11")[1];
+    const startRect = startSlot.getBoundingClientRect();
+    const endRect = endSlot.getBoundingClientRect();
+    const startPoint = {
+      clientX: startRect.left + startRect.width / 2,
+      clientY: startRect.top + startRect.height / 2,
+    };
+    const endPoint = {
+      clientX: endRect.left + endRect.width / 2,
+      clientY: endRect.top + endRect.height / 2,
+    };
+
+    fireEvent.pointerDown(startSlot, {
+      ...startPoint,
+      button: 0,
+      pointerId: 9,
+      pointerType: "mouse",
+      shiftKey: true,
+    });
+    fireEvent.pointerMove(startSlot, {
+      ...endPoint,
+      button: 0,
+      pointerId: 9,
+      pointerType: "mouse",
+      shiftKey: true,
+    });
+    fireEvent.pointerUp(startSlot, {
+      ...endPoint,
+      button: 0,
+      pointerId: 9,
+      pointerType: "mouse",
+      shiftKey: true,
+    });
+    fireEvent.click(startSlot, { shiftKey: true });
+
+    await expect(canvas.getByRole("button", { name: "Copy selected notes" })).toBeInTheDocument();
+    await expect(canvasElement.querySelectorAll(".banjo-tab-note[data-selected='true']").length).toBe(3);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Copy selected notes" }));
+    fireEvent.pointerOver(previewTarget, {
+      pointerType: "mouse",
+    });
+
+    await expect(canvasElement.querySelector(".banjo-tab-note--paste-preview")).toBeInTheDocument();
+  },
+};
+
+export const KeyboardCopyPasteInteraction: Story = {
+  args: {
+    initialState: selectionEditorState(),
+  },
+  play: async ({ canvas }) => {
+    const startSlot = canvas.getAllByLabelText("Set string 1 slot 5")[0];
+    const endSlot = canvas.getAllByLabelText("Set string 4 slot 8")[0];
+    const pasteSlot = canvas.getAllByLabelText("Set string 1 slot 11")[1];
+    const startRect = startSlot.getBoundingClientRect();
+    const endRect = endSlot.getBoundingClientRect();
+    const startPoint = {
+      clientX: startRect.left + startRect.width / 2,
+      clientY: startRect.top + startRect.height / 2,
+    };
+    const endPoint = {
+      clientX: endRect.left + endRect.width / 2,
+      clientY: endRect.top + endRect.height / 2,
+    };
+
+    fireEvent.pointerDown(startSlot, {
+      ...startPoint,
+      button: 0,
+      pointerId: 10,
+      pointerType: "mouse",
+      shiftKey: true,
+    });
+    fireEvent.pointerMove(startSlot, {
+      ...endPoint,
+      button: 0,
+      pointerId: 10,
+      pointerType: "mouse",
+      shiftKey: true,
+    });
+    fireEvent.pointerUp(startSlot, {
+      ...endPoint,
+      button: 0,
+      pointerId: 10,
+      pointerType: "mouse",
+      shiftKey: true,
+    });
+    fireEvent.click(startSlot, { shiftKey: true });
+
+    fireEvent.keyDown(window, { key: "c", ctrlKey: true });
+    pasteSlot.focus();
+    fireEvent.keyDown(window, { key: "v", ctrlKey: true });
+
+    await expect(canvas.getByRole("button", { name: "Edit fret 2 on string 1, slot 11" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Edit fret 3 on string 2, slot 12" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Edit fret 5 on string 4, slot 14" })).toBeInTheDocument();
+  },
+};
+
+export const RepeatPasteWithModifierClickInteraction: Story = {
+  args: {
+    initialState: selectionEditorState(),
+  },
+  play: async ({ canvas }) => {
+    const startSlot = canvas.getAllByLabelText("Set string 1 slot 5")[0];
+    const endSlot = canvas.getAllByLabelText("Set string 4 slot 8")[0];
+    const firstPasteSlot = canvas.getAllByLabelText("Set string 1 slot 9")[0];
+    const secondPasteSlot = canvas.getAllByLabelText("Set string 1 slot 13")[0];
+    const startRect = startSlot.getBoundingClientRect();
+    const endRect = endSlot.getBoundingClientRect();
+
+    fireEvent.pointerDown(startSlot, {
+      clientX: startRect.left + startRect.width / 2,
+      clientY: startRect.top + startRect.height / 2,
+      button: 0,
+      pointerId: 11,
+      pointerType: "mouse",
+      shiftKey: true,
+    });
+    fireEvent.pointerMove(startSlot, {
+      clientX: endRect.left + endRect.width / 2,
+      clientY: endRect.top + endRect.height / 2,
+      button: 0,
+      pointerId: 11,
+      pointerType: "mouse",
+      shiftKey: true,
+    });
+    fireEvent.pointerUp(startSlot, {
+      clientX: endRect.left + endRect.width / 2,
+      clientY: endRect.top + endRect.height / 2,
+      button: 0,
+      pointerId: 11,
+      pointerType: "mouse",
+      shiftKey: true,
+    });
+    fireEvent.click(startSlot, { shiftKey: true });
+
+    await userEvent.click(canvas.getByRole("button", { name: "Copy selected notes" }));
+    fireEvent.click(firstPasteSlot, { ctrlKey: true });
+    fireEvent.click(secondPasteSlot);
+
+    await expect(canvas.getByRole("button", { name: "Edit fret 2 on string 1, slot 9" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Edit fret 2 on string 1, slot 13" })).toBeInTheDocument();
+  },
+};
+
 export const DragDropMeasureReorders: Story = {
   args: {
     initialState: makeEditorState([
@@ -864,6 +1035,25 @@ export const MobileLongTitleFloatingControls: Story = {
   },
 };
 
+export const MobileSelectionButtonPressed: Story = {
+  args: {
+    initialState: selectionEditorState(),
+  },
+  parameters: {
+    viewport: {
+      defaultViewport: "mobile1",
+    },
+  },
+  play: async ({ canvas }) => {
+    const selectionButton = canvas.getByRole("button", { name: "Select notes" });
+    const addMeasureButton = canvas.getByRole("button", { name: "Add measure" });
+
+    await userEvent.click(selectionButton);
+    await expect(selectionButton).toHaveAttribute("aria-pressed", "true");
+    await expect(addMeasureButton).toBeInTheDocument();
+  },
+};
+
 export const MobileNarrowArticulatedNotes: Story = {
   args: {
     initialState: makeEditorState([
@@ -887,6 +1077,25 @@ export const MobileNarrowArticulatedNotes: Story = {
     await expect(canvas.getByRole("button", { name: "Edit fret 5\\2 on string 3, slots 8 through 10" })).toBeInTheDocument();
   },
 };
+
+function selectionEditorState(): BanjoTabEditorState {
+  return makeEditorState([
+    {
+      id: "measure-1",
+      title: "Intro",
+      notes: [
+        { id: "note-1", stringIndex: 0, position: 4, fret: 2 },
+        { id: "note-2", stringIndex: 1, position: 5, fret: 3 },
+        { id: "note-3", stringIndex: 3, position: 7, fret: 5 },
+      ],
+    },
+    {
+      id: "measure-2",
+      title: "Repeat",
+      notes: [{ id: "note-4", stringIndex: 2, position: 8, fret: 7 }],
+    },
+  ]);
+}
 
 function editorStateWithOpenPicker(fret: number): BanjoTabEditorState {
   return {
