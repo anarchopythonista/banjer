@@ -316,6 +316,137 @@ describe("banjoTabReducer", () => {
     expect(state.tab.measures[0].notes).toEqual([]);
   });
 
+  it("pastes copied notes into a target measure", () => {
+    const copiedSelection = {
+      sourceMeasureId: "measure-1",
+      sourceNoteIds: ["note-1", "note-2"],
+      minPosition: 4,
+      maxPosition: 6,
+      notes: [
+        { stringIndex: 0, positionOffset: 0, fret: 2 },
+        { stringIndex: 2, positionOffset: 2, fret: 5 },
+      ],
+    };
+    const state = reducerWith(
+      stateWithMeasures([
+        measure("measure-1", [
+          { id: "note-1", stringIndex: 0, position: 4, fret: 2 },
+          { id: "note-2", stringIndex: 2, position: 6, fret: 5 },
+        ]),
+        measure("measure-2", []),
+      ]),
+      {
+        type: "PASTE_NOTES",
+        target: { measureId: "measure-2", position: 8 },
+        selection: copiedSelection,
+      },
+    );
+
+    expect(state.tab.measures[1].notes).toMatchObject([
+      { stringIndex: 0, position: 8, fret: 2 },
+      { stringIndex: 2, position: 10, fret: 5 },
+    ]);
+    expect(state.tab.measures[1].notes[0].id).not.toBe("note-1");
+    expect(state.tab.measures[1].notes[1].id).not.toBe("note-2");
+  });
+
+  it("replaces conflicting notes when pasting", () => {
+    const copiedSelection = {
+      sourceMeasureId: "measure-1",
+      sourceNoteIds: ["note-1"],
+      minPosition: 4,
+      maxPosition: 4,
+      notes: [{ stringIndex: 1, positionOffset: 0, fret: 7 }],
+    };
+    const state = reducerWith(
+      stateWithMeasures([
+        measure("measure-1", [{ id: "note-1", stringIndex: 1, position: 4, fret: 7 }]),
+        measure("measure-2", [
+          { id: "note-2", stringIndex: 1, position: 8, fret: 2 },
+          { id: "note-3", stringIndex: 2, position: 8, fret: 5 },
+        ]),
+      ]),
+      {
+        type: "PASTE_NOTES",
+        target: { measureId: "measure-2", position: 8 },
+        selection: copiedSelection,
+      },
+    );
+
+    expect(state.tab.measures[1].notes).toMatchObject([
+      { id: "note-3", stringIndex: 2, position: 8, fret: 5 },
+      { stringIndex: 1, position: 8, fret: 7 },
+    ]);
+  });
+
+  it("clamps paste start when copied notes would exceed the measure", () => {
+    const copiedSelection = {
+      sourceMeasureId: "measure-1",
+      sourceNoteIds: ["note-1", "note-2"],
+      minPosition: 3,
+      maxPosition: 7,
+      notes: [
+        { stringIndex: 0, positionOffset: 0, fret: 2 },
+        { stringIndex: 4, positionOffset: 4, fret: 9 },
+      ],
+    };
+    const state = reducerWith(
+      stateWithMeasures([
+        measure("measure-1", []),
+        measure("measure-2", []),
+      ]),
+      {
+        type: "PASTE_NOTES",
+        target: { measureId: "measure-2", position: 15 },
+        selection: copiedSelection,
+      },
+    );
+
+    expect(state.tab.measures[1].notes).toMatchObject([
+      { stringIndex: 0, position: 11, fret: 2 },
+      { stringIndex: 4, position: 15, fret: 9 },
+    ]);
+  });
+
+  it("pastes articulated notes with duration and articulation data intact", () => {
+    const copiedSelection = {
+      sourceMeasureId: "measure-1",
+      sourceNoteIds: ["note-1"],
+      minPosition: 2,
+      maxPosition: 2,
+      notes: [
+        {
+          stringIndex: 2,
+          positionOffset: 0,
+          fret: 3,
+          durationSlots: 3,
+          articulation: { type: "slide" as const, targetFret: 5 },
+        },
+      ],
+    };
+    const state = reducerWith(
+      stateWithMeasures([
+        measure("measure-1", []),
+        measure("measure-2", []),
+      ]),
+      {
+        type: "PASTE_NOTES",
+        target: { measureId: "measure-2", position: 9 },
+        selection: copiedSelection,
+      },
+    );
+
+    expect(state.tab.measures[1].notes).toMatchObject([
+      {
+        stringIndex: 2,
+        position: 9,
+        fret: 3,
+        durationSlots: 3,
+        articulation: { type: "slide", targetFret: 5 },
+      },
+    ]);
+  });
+
   it("moves a measure to a new index", () => {
     const state = reducerWith(stateWithMeasures([
       measure("measure-1", [{ id: "note-1", stringIndex: 0, position: 4, fret: 2 }]),

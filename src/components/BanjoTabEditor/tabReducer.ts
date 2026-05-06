@@ -5,10 +5,13 @@ import {
   getDefaultMeasureTitle,
   SLOTS_PER_MEASURE,
 } from "./constants";
+import { clampPasteStart } from "./selection";
 import type {
   BanjoTabEditorState,
+  CopiedNoteSelection,
   EditorMode,
   NoteLocation,
+  PasteTarget,
   TabArticulation,
   TabMeasureData,
   TabNoteData,
@@ -29,6 +32,11 @@ export type BanjoTabAction =
       noteId: string;
       edge: "start" | "end";
       targetPosition: number;
+    }
+  | {
+      type: "PASTE_NOTES";
+      target: PasteTarget;
+      selection: CopiedNoteSelection;
     }
   | { type: "DELETE_NOTE"; noteId: string }
   | { type: "MOVE_MEASURE"; measureId: string; targetIndex: number }
@@ -94,6 +102,15 @@ export function banjoTabReducer(
             action.edge,
             action.targetPosition,
           ),
+        },
+      };
+
+    case "PASTE_NOTES":
+      return {
+        ...state,
+        tab: {
+          ...state.tab,
+          measures: pasteNotes(state.tab.measures, action.target, action.selection),
         },
       };
 
@@ -247,6 +264,42 @@ function moveNote(
           position: target.position,
         },
       ],
+    };
+  });
+}
+
+function pasteNotes(
+  measures: TabMeasureData[],
+  target: PasteTarget,
+  selection: CopiedNoteSelection,
+): TabMeasureData[] {
+  const targetStart = clampPasteStart(target.position, selection, SLOTS_PER_MEASURE);
+  const pastedNotes: TabNoteData[] = selection.notes.map((note) => ({
+    id: createNoteId(),
+    stringIndex: note.stringIndex,
+    position: targetStart + note.positionOffset,
+    fret: note.fret,
+    ...(note.durationSlots !== undefined ? { durationSlots: note.durationSlots } : {}),
+    ...(note.articulation ? { articulation: note.articulation } : {}),
+  }));
+
+  return measures.map((measure) => {
+    if (measure.id !== target.measureId) {
+      return measure;
+    }
+
+    const nonConflictingNotes = measure.notes.filter(
+      (existingNote) =>
+        !pastedNotes.some(
+          (pastedNote) =>
+            pastedNote.stringIndex === existingNote.stringIndex &&
+            pastedNote.position === existingNote.position,
+        ),
+    );
+
+    return {
+      ...measure,
+      notes: [...nonConflictingNotes, ...pastedNotes],
     };
   });
 }
