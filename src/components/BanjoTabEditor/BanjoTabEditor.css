@@ -75,6 +75,10 @@
   cursor: text;
 }
 
+.banjo-tab-editor[data-selection-mode="true"] .banjo-tab-measure-grid {
+  touch-action: none;
+}
+
 .banjo-tab-history-controls {
   display: inline-flex;
   align-items: center;
@@ -823,6 +827,7 @@
   font-weight: 800;
   transform: translateX(-50%);
   cursor: pointer;
+  touch-action: none;
   box-shadow: var(--tab-floating-shadow);
 }
 

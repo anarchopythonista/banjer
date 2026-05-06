@@ -1,4 +1,7 @@
 import type {
+  PointerEvent,
+} from "react";
+import type {
   BanjoTab,
   CopiedNoteSelection,
   EditorMode,
@@ -39,6 +42,14 @@ type TabStaffProps = {
   pasteTarget: PasteTarget | null;
   isSelectionModeEnabled: boolean;
   onCopySelection: () => void;
+  onCopySelectionPointerDown: (
+    bounds: SelectionBounds,
+    event: PointerEvent<HTMLButtonElement>,
+  ) => void;
+  onCopySelectionPointerMove: (event: PointerEvent<HTMLButtonElement>) => void;
+  onCopySelectionPointerUp: (event: PointerEvent<HTMLButtonElement>) => void;
+  onCopySelectionPointerCancel: (event: PointerEvent<HTMLButtonElement>) => void;
+  onCopySelectionLostPointerCapture: (event: PointerEvent<HTMLButtonElement>) => void;
   selectionApi: ReturnType<typeof usePointerNoteSelection>;
 };
 
@@ -58,6 +69,11 @@ export function TabStaff({
   pasteTarget,
   isSelectionModeEnabled,
   onCopySelection,
+  onCopySelectionPointerDown,
+  onCopySelectionPointerMove,
+  onCopySelectionPointerUp,
+  onCopySelectionPointerCancel,
+  onCopySelectionLostPointerCapture,
   selectionApi,
 }: TabStaffProps) {
   const targetIndex = mode.type === "dragging-measure" ? mode.currentTargetIndex : null;
@@ -86,6 +102,11 @@ export function TabStaff({
             pasteTarget={pasteTarget}
             isSelectionModeEnabled={isSelectionModeEnabled}
             onCopySelection={onCopySelection}
+            onCopySelectionPointerDown={onCopySelectionPointerDown}
+            onCopySelectionPointerMove={onCopySelectionPointerMove}
+            onCopySelectionPointerUp={onCopySelectionPointerUp}
+            onCopySelectionPointerCancel={onCopySelectionPointerCancel}
+            onCopySelectionLostPointerCapture={onCopySelectionLostPointerCapture}
             selectionApi={selectionApi}
           />
         </div>

@@ -42,6 +42,10 @@ describe("BanjoTabEditor note selection CSS", () => {
     expect(css).toContain(".banjo-tab-editor[data-selection-mode=\"true\"] .banjo-tab-measure-grid,");
   });
 
+  it("disables touch scrolling on the measure grid while selection mode is active", () => {
+    expect(css).toContain(".banjo-tab-editor[data-selection-mode=\"true\"] .banjo-tab-measure-grid {\n  touch-action: none;");
+  });
+
   it("draws the selection button insertion caret with serifs", () => {
     expect(css).toContain(".banjo-tab-selection-caret::before");
     expect(css).toContain(".banjo-tab-selection-caret::after");

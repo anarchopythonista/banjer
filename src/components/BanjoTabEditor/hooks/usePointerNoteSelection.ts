@@ -65,6 +65,12 @@ export function usePointerNoteSelection({
     return true;
   }, []);
 
+  const getLocationFromPoint = useCallback(
+    (point: ScreenPoint, measureId?: string) =>
+      getSelectionLocation(point, stringTrackElementsRef.current, measureId),
+    [],
+  );
+
   const startSelection = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
       if (event.button !== 0 || state.mode.type !== "idle") {
@@ -180,6 +186,9 @@ export function usePointerNoteSelection({
           ),
         );
         suppressNextClickRef.current = true;
+        window.setTimeout(() => {
+          suppressNextClickRef.current = false;
+        }, 0);
       } else {
         onSelectionClear();
       }
@@ -209,6 +218,7 @@ export function usePointerNoteSelection({
 
   return {
     registerStringTrack,
+    getLocationFromPoint,
     shouldSuppressClick,
     selectionPointerHandlers: {
       onPointerDown: startSelection,

@@ -48,6 +48,14 @@ type TabMeasureProps = {
   pasteTarget: PasteTarget | null;
   isSelectionModeEnabled: boolean;
   onCopySelection: () => void;
+  onCopySelectionPointerDown: (
+    bounds: SelectionBounds,
+    event: PointerEvent<HTMLButtonElement>,
+  ) => void;
+  onCopySelectionPointerMove: (event: PointerEvent<HTMLButtonElement>) => void;
+  onCopySelectionPointerUp: (event: PointerEvent<HTMLButtonElement>) => void;
+  onCopySelectionPointerCancel: (event: PointerEvent<HTMLButtonElement>) => void;
+  onCopySelectionLostPointerCapture: (event: PointerEvent<HTMLButtonElement>) => void;
   selectionApi: ReturnType<typeof usePointerNoteSelection>;
 };
 
@@ -70,6 +78,11 @@ export function TabMeasure({
   pasteTarget,
   isSelectionModeEnabled,
   onCopySelection,
+  onCopySelectionPointerDown,
+  onCopySelectionPointerMove,
+  onCopySelectionPointerUp,
+  onCopySelectionPointerCancel,
+  onCopySelectionLostPointerCapture,
   selectionApi,
 }: TabMeasureProps) {
   const measureTitle = measure.title || getDefaultMeasureTitle(measure.id);
@@ -185,7 +198,15 @@ export function TabMeasure({
           ))}
         </div>
         {copyButtonBounds && (
-          <SelectionCopyButton bounds={copyButtonBounds} onCopy={onCopySelection} />
+          <SelectionCopyButton
+            bounds={copyButtonBounds}
+            onCopy={onCopySelection}
+            onCopyPointerDown={onCopySelectionPointerDown}
+            onCopyPointerMove={onCopySelectionPointerMove}
+            onCopyPointerUp={onCopySelectionPointerUp}
+            onCopyPointerCancel={onCopySelectionPointerCancel}
+            onCopyLostPointerCapture={onCopySelectionLostPointerCapture}
+          />
         )}
       </div>
     </section>

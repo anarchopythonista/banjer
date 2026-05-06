@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { AddMeasureButton } from "./components/AddMeasureButton";
 import { DocumentMenuButton } from "./components/DocumentMenuButton";
 import { EditableDocumentTitle } from "./components/EditableDocumentTitle";
@@ -36,6 +37,21 @@ type BanjoTabEditorProps = {
   initialState?: BanjoTabEditorState;
 };
 
+type CopyPasteDragState = {
+  pointerId: number;
+  bounds: SelectionBounds;
+  captureElement: HTMLElement;
+  startPoint: ScreenPoint;
+  currentTarget: PasteTarget | null;
+  copiedSelection: CopiedNoteSelection | null;
+  longPressTimer: ReturnType<typeof window.setTimeout>;
+  isActive: boolean;
+  shouldSuppressClick: boolean;
+};
+
+const COPY_LONG_PRESS_DELAY_MS = 360;
+const COPY_LONG_PRESS_CANCEL_DISTANCE_PX = 10;
+
 export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
   const {
     documentState,
@@ -66,6 +82,9 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
   const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [completedSelectionBounds, setCompletedSelectionBounds] = useState<SelectionBounds | null>(null);
   const [copiedSelection, setCopiedSelection] = useState<CopiedNoteSelection | null>(null);
+  const copyPasteDragRef = useRef<CopyPasteDragState | null>(null);
+  const lastCopyPointerTypeRef = useRef<string | null>(null);
+  const suppressNextCopyClickRef = useRef(false);
   const activeSelectionBounds =
     state.mode.type === "selecting-notes"
       ? normalizeSelectionBounds(state.mode.measureId, state.mode.start, state.mode.current)
@@ -96,34 +115,55 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
     setCompletedSelectionBounds(bounds);
   }, [state.tab.measures]);
 
-  const copySelection = useCallback(() => {
-    if (!completedSelectionBounds) {
-      return;
-    }
-
-    const measure = state.tab.measures.find((item) => item.id === completedSelectionBounds.measureId);
-    const selectedNotes = measure ? getNotesInSelection(measure, completedSelectionBounds) : [];
-    const nextCopiedSelection = createCopiedNoteSelection(completedSelectionBounds.measureId, selectedNotes);
+  const copySelectionFromBounds = useCallback((
+    bounds: SelectionBounds,
+    options: { preferPreviewTarget?: boolean; target?: PasteTarget | null } = {},
+  ) => {
+    const measure = state.tab.measures.find((item) => item.id === bounds.measureId);
+    const selectedNotes = measure ? getNotesInSelection(measure, bounds) : [];
+    const nextCopiedSelection = createCopiedNoteSelection(bounds.measureId, selectedNotes);
 
     if (!nextCopiedSelection) {
-      return;
+      return null;
     }
+
+    const previewTarget =
+      options.target !== undefined
+        ? options.target
+        : options.preferPreviewTarget !== false && quickFretTargetRef.current
+          ? {
+              measureId: quickFretTargetRef.current.measureId,
+              position: quickFretTargetRef.current.position,
+            }
+          : null;
 
     setCopiedSelection(nextCopiedSelection);
     dispatch({
       type: "SET_EDITOR_MODE",
       mode: {
         type: "paste-preview",
-        target: quickFretTargetRef.current
-          ? {
-              measureId: quickFretTargetRef.current.measureId,
-              position: quickFretTargetRef.current.position,
-            }
-          : null,
+        target: previewTarget,
         pointer: null,
       },
     });
-  }, [completedSelectionBounds, dispatch, state.tab.measures]);
+
+    return nextCopiedSelection;
+  }, [dispatch, state.tab.measures]);
+
+  const copySelection = useCallback(() => {
+    if (suppressNextCopyClickRef.current) {
+      suppressNextCopyClickRef.current = false;
+      return;
+    }
+
+    if (!completedSelectionBounds) {
+      return;
+    }
+
+    copySelectionFromBounds(completedSelectionBounds, {
+      preferPreviewTarget: lastCopyPointerTypeRef.current === "mouse",
+    });
+  }, [completedSelectionBounds, copySelectionFromBounds]);
 
   const pasteCopiedSelection = useCallback((target: PasteTarget, keepPreviewActive: boolean) => {
     if (!copiedSelection) {
@@ -145,6 +185,140 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
     onSelectionComplete: completeSelection,
     onSelectionClear: clearSelection,
   });
+  const getPasteTargetFromPoint = useCallback((point: ScreenPoint): PasteTarget | null => {
+    const location = selectionApi.getLocationFromPoint(point);
+
+    return location
+      ? {
+          measureId: location.measureId,
+          position: location.position,
+        }
+      : null;
+  }, [selectionApi]);
+  const updateCopyPastePreview = useCallback((
+    target: PasteTarget | null,
+    point: ScreenPoint | null,
+  ) => {
+    dispatch({
+      type: "SET_EDITOR_MODE",
+      mode: {
+        type: "paste-preview",
+        target,
+        pointer: point,
+      },
+    });
+  }, [dispatch]);
+  const handleCopySelectionPointerDown = useCallback((
+    bounds: SelectionBounds,
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => {
+    event.stopPropagation();
+    lastCopyPointerTypeRef.current = event.pointerType;
+
+    if (event.button !== 0) {
+      return;
+    }
+
+    const point = getPointerEventPoint(event);
+    const captureElement = event.currentTarget;
+
+    safeSetPointerCapture(captureElement, event.pointerId);
+    copyPasteDragRef.current = {
+      pointerId: event.pointerId,
+      bounds,
+      captureElement,
+      startPoint: point,
+      currentTarget: null,
+      copiedSelection: null,
+      isActive: false,
+      shouldSuppressClick: false,
+      longPressTimer: window.setTimeout(() => {
+        const activeDrag = copyPasteDragRef.current;
+
+        if (!activeDrag || activeDrag.pointerId !== event.pointerId) {
+          return;
+        }
+
+        const initialTarget =
+          getPasteTargetFromPoint(activeDrag.startPoint) ??
+          getFallbackPasteTarget(activeDrag.bounds);
+        const nextCopiedSelection = copySelectionFromBounds(activeDrag.bounds, {
+          target: initialTarget,
+        });
+
+        if (!nextCopiedSelection) {
+          return;
+        }
+
+        activeDrag.isActive = true;
+        activeDrag.shouldSuppressClick = true;
+        activeDrag.currentTarget = initialTarget;
+        activeDrag.copiedSelection = nextCopiedSelection;
+      }, COPY_LONG_PRESS_DELAY_MS),
+    };
+  }, [copySelectionFromBounds, getPasteTargetFromPoint]);
+  const handleCopySelectionPointerMove = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
+    const activeDrag = copyPasteDragRef.current;
+
+    if (!activeDrag || activeDrag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    event.stopPropagation();
+    const point = getPointerEventPoint(event);
+
+    if (!activeDrag.isActive) {
+      if (getDistance(activeDrag.startPoint, point) > COPY_LONG_PRESS_CANCEL_DISTANCE_PX) {
+        window.clearTimeout(activeDrag.longPressTimer);
+        releasePointerCapture(activeDrag);
+        copyPasteDragRef.current = null;
+      }
+      return;
+    }
+
+    event.preventDefault();
+    const target = getPasteTargetFromPoint(point);
+    activeDrag.currentTarget = target;
+    updateCopyPastePreview(target, point);
+  }, [getPasteTargetFromPoint, updateCopyPastePreview]);
+  const finishCopyPasteDrag = useCallback((
+    event: ReactPointerEvent<HTMLButtonElement>,
+    shouldPaste: boolean,
+  ) => {
+    const activeDrag = copyPasteDragRef.current;
+
+    if (!activeDrag || activeDrag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    event.stopPropagation();
+    window.clearTimeout(activeDrag.longPressTimer);
+    releasePointerCapture(activeDrag);
+
+    if (!activeDrag.isActive) {
+      copyPasteDragRef.current = null;
+      return;
+    }
+
+    event.preventDefault();
+    suppressNextCopyClickRef.current = activeDrag.shouldSuppressClick;
+
+    if (shouldPaste && activeDrag.currentTarget && activeDrag.copiedSelection) {
+      pasteCopiedSelection(activeDrag.currentTarget, false);
+    } else {
+      updateCopyPastePreview(null, null);
+    }
+
+    copyPasteDragRef.current = null;
+  }, [pasteCopiedSelection, updateCopyPastePreview]);
+  const handleCopySelectionPointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) => finishCopyPasteDrag(event, true),
+    [finishCopyPasteDrag],
+  );
+  const handleCopySelectionPointerCancel = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) => finishCopyPasteDrag(event, false),
+    [finishCopyPasteDrag],
+  );
   const dragApi = usePointerNoteDrag({
     state,
     dispatch,
@@ -282,6 +456,15 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
       void loadDocument(id);
     }
   };
+
+  useEffect(() => () => {
+    const activeDrag = copyPasteDragRef.current;
+
+    if (activeDrag) {
+      window.clearTimeout(activeDrag.longPressTimer);
+      copyPasteDragRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -481,6 +664,11 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
         pasteTarget={pasteTarget}
         isSelectionModeEnabled={isSelectionModeEnabled}
         onCopySelection={copySelection}
+        onCopySelectionPointerDown={handleCopySelectionPointerDown}
+        onCopySelectionPointerMove={handleCopySelectionPointerMove}
+        onCopySelectionPointerUp={handleCopySelectionPointerUp}
+        onCopySelectionPointerCancel={handleCopySelectionPointerCancel}
+        onCopySelectionLostPointerCapture={handleCopySelectionPointerCancel}
         selectionApi={selectionApi}
       />
       <FretPickerPopover
@@ -631,6 +819,38 @@ function locationsMatch(left: NoteLocation | null, right: NoteLocation): boolean
       left.stringIndex === right.stringIndex &&
       left.position === right.position,
   );
+}
+
+function getFallbackPasteTarget(bounds: SelectionBounds): PasteTarget {
+  return {
+    measureId: bounds.measureId,
+    position: bounds.maxPosition + 1,
+  };
+}
+
+function getPointerEventPoint(event: ReactPointerEvent<HTMLElement>): ScreenPoint {
+  return {
+    x: event.clientX,
+    y: event.clientY,
+  };
+}
+
+function getDistance(start: ScreenPoint, current: ScreenPoint): number {
+  return Math.hypot(current.x - start.x, current.y - start.y);
+}
+
+function safeSetPointerCapture(element: HTMLElement, pointerId: number) {
+  try {
+    element.setPointerCapture(pointerId);
+  } catch {
+    // Synthetic pointer events in tests may not have an active browser pointer.
+  }
+}
+
+function releasePointerCapture(activeDrag: CopyPasteDragState) {
+  if (activeDrag.captureElement.hasPointerCapture(activeDrag.pointerId)) {
+    activeDrag.captureElement.releasePointerCapture(activeDrag.pointerId);
+  }
 }
 
 function getTrashDropZoneState(

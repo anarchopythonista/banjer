@@ -757,6 +757,94 @@ export const ColumnSelectionInteraction: Story = {
   },
 };
 
+export const MobileTapCopyPasteInteraction: Story = {
+  args: {
+    initialState: selectionEditorState(),
+  },
+  parameters: {
+    viewport: {
+      defaultViewport: "mobile1",
+    },
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await selectIntroNotesWithTouch(canvas);
+
+    const copyButton = canvas.getByRole("button", { name: "Copy selected notes" });
+    fireEvent.pointerDown(copyButton, {
+      clientX: copyButton.getBoundingClientRect().left + 4,
+      clientY: copyButton.getBoundingClientRect().top + 4,
+      button: 0,
+      pointerId: 14,
+      pointerType: "touch",
+    });
+    fireEvent.pointerUp(copyButton, {
+      clientX: copyButton.getBoundingClientRect().left + 4,
+      clientY: copyButton.getBoundingClientRect().top + 4,
+      button: 0,
+      pointerId: 14,
+      pointerType: "touch",
+    });
+    fireEvent.click(copyButton);
+
+    await expect(canvasElement.querySelector(".banjo-tab-note--paste-preview")).not.toBeInTheDocument();
+
+    await userEvent.click(canvas.getAllByLabelText("Set string 1 slot 11")[1]);
+
+    await expect(canvas.getByRole("button", { name: "Edit fret 2 on string 1, slot 11" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Edit fret 3 on string 2, slot 12" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Edit fret 5 on string 4, slot 14" })).toBeInTheDocument();
+  },
+};
+
+export const MobileLongPressCopyDragPasteInteraction: Story = {
+  args: {
+    initialState: selectionEditorState(),
+  },
+  parameters: {
+    viewport: {
+      defaultViewport: "mobile1",
+    },
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await selectIntroNotesWithTouch(canvas);
+
+    const copyButton = canvas.getByRole("button", { name: "Copy selected notes" });
+    const targetSlot = canvas.getAllByLabelText("Set string 1 slot 11")[1];
+    const copyRect = copyButton.getBoundingClientRect();
+    const targetRect = targetSlot.getBoundingClientRect();
+
+    fireEvent.pointerDown(copyButton, {
+      clientX: copyRect.left + copyRect.width / 2,
+      clientY: copyRect.top + copyRect.height / 2,
+      button: 0,
+      pointerId: 15,
+      pointerType: "touch",
+    });
+    await new Promise((resolve) => window.setTimeout(resolve, 420));
+    fireEvent.pointerMove(copyButton, {
+      clientX: targetRect.left + targetRect.width / 2,
+      clientY: targetRect.top + targetRect.height / 2,
+      button: 0,
+      pointerId: 15,
+      pointerType: "touch",
+    });
+
+    await expect(canvasElement.querySelector(".banjo-tab-note--paste-preview")).toBeInTheDocument();
+
+    fireEvent.pointerUp(copyButton, {
+      clientX: targetRect.left + targetRect.width / 2,
+      clientY: targetRect.top + targetRect.height / 2,
+      button: 0,
+      pointerId: 15,
+      pointerType: "touch",
+    });
+
+    await expect(canvas.getByRole("button", { name: "Edit fret 2 on string 1, slot 11" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Edit fret 3 on string 2, slot 12" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Edit fret 5 on string 4, slot 14" })).toBeInTheDocument();
+  },
+};
+
 export const KeyboardCopyPasteInteraction: Story = {
   args: {
     initialState: selectionEditorState(),
@@ -1172,6 +1260,41 @@ function verticalSlotSelectionEditorState(): BanjoTabEditorState {
       ],
     },
   ]);
+}
+
+async function selectIntroNotesWithTouch(canvas: ReturnType<typeof within>) {
+  const selectionButton = canvas.getByRole("button", { name: "Select notes" });
+  await userEvent.click(selectionButton);
+
+  const measureGrid = canvas.getByRole("grid", { name: "Tablature Intro" });
+  const startSlot = canvas.getAllByLabelText("Set string 1 slot 5")[0];
+  const endSlot = canvas.getAllByLabelText("Set string 5 slot 8")[0];
+  const startRect = startSlot.getBoundingClientRect();
+  const endRect = endSlot.getBoundingClientRect();
+
+  fireEvent.pointerDown(measureGrid, {
+    clientX: startRect.left + startRect.width / 2,
+    clientY: startRect.top + startRect.height / 2,
+    button: 0,
+    pointerId: 13,
+    pointerType: "touch",
+  });
+  fireEvent.pointerMove(measureGrid, {
+    clientX: endRect.left + endRect.width / 2,
+    clientY: endRect.top + endRect.height / 2,
+    button: 0,
+    pointerId: 13,
+    pointerType: "touch",
+  });
+  fireEvent.pointerUp(measureGrid, {
+    clientX: endRect.left + endRect.width / 2,
+    clientY: endRect.top + endRect.height / 2,
+    button: 0,
+    pointerId: 13,
+    pointerType: "touch",
+  });
+
+  await expect(canvas.getByRole("button", { name: "Copy selected notes" })).toBeInTheDocument();
 }
 
 function editorStateWithOpenPicker(fret: number): BanjoTabEditorState {
