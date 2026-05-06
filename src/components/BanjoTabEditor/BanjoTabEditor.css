@@ -549,6 +549,10 @@
   padding: 12px 14px 16px;
 }
 
+.banjo-tab-string-grid {
+  display: grid;
+}
+
 .banjo-tab-string-row {
   display: grid;
   grid-template-columns: 32px minmax(280px, 1fr);

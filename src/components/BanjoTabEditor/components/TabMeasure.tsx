@@ -155,35 +155,35 @@ export function TabMeasure({
       </div>
       <div
         className="banjo-tab-measure-grid"
-        role="grid"
-        aria-label={`Tablature ${measureTitle}`}
         onPointerDown={selectionApi.selectionPointerHandlers.onPointerDown}
         onPointerMove={selectionApi.selectionPointerHandlers.onPointerMove}
         onPointerUp={selectionApi.selectionPointerHandlers.onPointerUp}
         onPointerCancel={selectionApi.selectionPointerHandlers.onPointerCancel}
         onLostPointerCapture={selectionApi.selectionPointerHandlers.onLostPointerCapture}
       >
-        {tuning.map((string, stringIndex) => (
-          <TabStringRow
-            key={string.id}
-            measureId={measure.id}
-            string={string}
-            stringIndex={stringIndex}
-            notes={measure.notes.filter((note) => note.stringIndex === stringIndex)}
-            mode={mode}
-            onSlotPress={onSlotPress}
-            onNotePress={onNotePress}
-            onQuickFretTarget={onQuickFretTarget}
-            onQuickFretTargetClear={onQuickFretTargetClear}
-            dragApi={dragApi}
-            activeSelectionBounds={activeSelectionBounds}
-            selectedNoteIds={selectedNoteIds}
-            copiedSelection={copiedSelection}
-            pasteTarget={pasteTarget}
-            isSelectionModeEnabled={isSelectionModeEnabled}
-            selectionApi={selectionApi}
-          />
-        ))}
+        <div className="banjo-tab-string-grid" role="grid" aria-label={`Tablature ${measureTitle}`}>
+          {tuning.map((string, stringIndex) => (
+            <TabStringRow
+              key={string.id}
+              measureId={measure.id}
+              string={string}
+              stringIndex={stringIndex}
+              notes={measure.notes.filter((note) => note.stringIndex === stringIndex)}
+              mode={mode}
+              onSlotPress={onSlotPress}
+              onNotePress={onNotePress}
+              onQuickFretTarget={onQuickFretTarget}
+              onQuickFretTargetClear={onQuickFretTargetClear}
+              dragApi={dragApi}
+              activeSelectionBounds={activeSelectionBounds}
+              selectedNoteIds={selectedNoteIds}
+              copiedSelection={copiedSelection}
+              pasteTarget={pasteTarget}
+              isSelectionModeEnabled={isSelectionModeEnabled}
+              selectionApi={selectionApi}
+            />
+          ))}
+        </div>
         {copyButtonBounds && (
           <SelectionCopyButton bounds={copyButtonBounds} onCopy={onCopySelection} />
         )}
