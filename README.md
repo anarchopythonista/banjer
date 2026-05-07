@@ -7,7 +7,7 @@ The project is currently centered on the interactive tablature editor MVP.
 ## Screenshots
 
 #### editor overview  
-<img width="1017" height="835" alt="banjer-desktop-editor-overview" src="https://github.com/user-attachments/assets/195f06b8-43f3-4e5d-af57-bf0391766be1" />
+<img width="1023" height="808" alt="banjer-main-interface-light" src="https://github.com/user-attachments/assets/2f9497c9-bb84-49a5-9b92-e318ac6a1210" />
 
 
 #### fret picker and note editing  
