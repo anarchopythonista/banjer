@@ -6,14 +6,17 @@ The project is currently centered on the interactive tablature editor MVP.
 
 ## Screenshots
 
-> Screenshot placeholder: editor overview  
-> Add `docs/screenshots/editor-overview.png` when a polished capture is ready.
+#### editor overview  
+<img width="1017" height="835" alt="banjer-desktop-editor-overview" src="https://github.com/user-attachments/assets/195f06b8-43f3-4e5d-af57-bf0391766be1" />
 
-> Screenshot placeholder: fret picker and note editing  
-> Add `docs/screenshots/fret-picker.png` when a polished capture is ready.
 
-> Screenshot placeholder: mobile layout  
-> Add `docs/screenshots/mobile-editor.png` when a polished capture is ready.
+#### fret picker and note editing  
+<img width="411" height="338" alt="banjer-desktop-fret-picker" src="https://github.com/user-attachments/assets/37583eec-9fbe-476b-b4d3-bd031f1eb726" />
+
+
+#### selecting notes on mobile  
+<img width="590" height="1278" alt="banjer-selection-mode-on-mobile" src="https://github.com/user-attachments/assets/ae36e2c7-2272-4dd4-96e4-f8bb24560854" />
+
 
 ## What Banjer Does Today
 
