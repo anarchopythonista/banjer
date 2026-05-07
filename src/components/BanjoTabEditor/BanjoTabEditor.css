@@ -840,13 +840,16 @@
   position: fixed;
   z-index: 20;
   width: min(var(--fret-picker-max-width, 316px), calc(100vw - (var(--fret-picker-margin, 16px) * 2)));
+  max-height: var(--fret-picker-available-height, calc(100dvh - 32px));
+  box-sizing: border-box;
   padding: 10px;
   border: 1px solid var(--tab-popover-border);
   border-radius: 8px;
   background: var(--tab-fret-bg);
   box-shadow: var(--tab-popover-shadow);
   transform: translate(-50%, 0);
-  overflow: hidden;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .banjo-tab-fret-picker,

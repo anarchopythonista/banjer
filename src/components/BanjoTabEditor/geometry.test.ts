@@ -126,6 +126,16 @@ describe("BanjoTabEditor geometry", () => {
     expect(rightEdgePosition.x).toBe(216);
   });
 
+  it("keeps a measured popover fully inside the vertical viewport edges", () => {
+    const position = containPopoverPosition(
+      { x: 195, y: 760 },
+      { width: 390, height: 800 },
+      { width: 316, height: 300, margin: 16, offsetY: 18, minTop: 92 },
+    );
+
+    expect(position.y).toBe(484);
+  });
+
   it("maps a pointer point to a measure drop index", () => {
     const measures = [
       { measureId: "measure-1", rect: { left: 100, top: 100, width: 500, height: 120 } },

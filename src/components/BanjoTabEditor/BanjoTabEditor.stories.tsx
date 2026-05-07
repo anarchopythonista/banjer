@@ -261,7 +261,7 @@ export const FretPickerNearScreenEdge: Story = {
         type: "fret-picker",
         location: { measureId: "measure-1", stringIndex: 0, position: 0 },
         noteId: "note-1",
-        screenPoint: { x: 10, y: 210 },
+        screenPoint: { x: 10, y: 540 },
       },
     },
   },
@@ -269,6 +269,15 @@ export const FretPickerNearScreenEdge: Story = {
     viewport: {
       defaultViewport: "mobile1",
     },
+  },
+  play: async ({ canvas }) => {
+    const picker = canvas.getByRole("dialog", { name: "Edit fret" });
+    const pickerRect = picker.getBoundingClientRect();
+
+    await expect(pickerRect.left).toBeGreaterThanOrEqual(16);
+    await expect(pickerRect.bottom).toBeLessThanOrEqual(window.innerHeight - 16);
+    await expect(canvas.getByRole("button", { name: "Fret 22" })).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: "Add technique for fret 2" })).toBeInTheDocument();
   },
 };
 

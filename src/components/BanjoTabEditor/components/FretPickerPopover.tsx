@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type {
   CSSProperties,
   KeyboardEvent as ReactKeyboardEvent,
@@ -34,6 +34,7 @@ type PopoverPosition = {
 };
 
 type FretPickerStyle = CSSProperties & {
+  "--fret-picker-available-height": string;
   "--fret-picker-max-width": string;
   "--fret-picker-margin": string;
 };
@@ -82,6 +83,7 @@ export function FretPickerPopover({
   return (
     <FretPickerPopoverContent
       key={pickerKey}
+      anchorPoint={mode.screenPoint}
       currentNote={currentNote}
       initialFret={initialFret}
       position={position}
@@ -92,6 +94,7 @@ export function FretPickerPopover({
 }
 
 type FretPickerPopoverContentProps = {
+  anchorPoint: { x: number; y: number };
   currentNote?: TabNoteData;
   initialFret: number;
   position: PopoverPosition;
@@ -100,6 +103,7 @@ type FretPickerPopoverContentProps = {
 };
 
 function FretPickerPopoverContent({
+  anchorPoint,
   currentNote,
   initialFret,
   position,
@@ -114,10 +118,47 @@ function FretPickerPopoverContent({
   const [pickerMode, setPickerMode] = useState<PickerMode>({ type: "select-fret" });
   const [transitionDirection, setTransitionDirection] = useState<PickerTransitionDirection>("forward");
   const [highlightedFret, setHighlightedFret] = useState(initialFret);
+  const focusFretRef = useRef(initialFret);
+  const [containedPosition, setContainedPosition] = useState(position);
+
+  useLayoutEffect(() => {
+    const updateContainedPosition = () => {
+      const popoverHeight = popoverRef.current?.getBoundingClientRect().height ?? 0;
+      const nextPosition = containPopoverPosition(
+        anchorPoint,
+        { width: window.innerWidth, height: window.innerHeight },
+        {
+          width: POPOVER_MAX_WIDTH,
+          height: popoverHeight,
+          margin: POPOVER_MARGIN,
+          offsetY: 18,
+          minTop: 92,
+        },
+      );
+
+      setContainedPosition((currentPosition) => {
+        if (currentPosition.left === nextPosition.x && currentPosition.top === nextPosition.y) {
+          return currentPosition;
+        }
+
+        return {
+          left: nextPosition.x,
+          top: nextPosition.y,
+        };
+      });
+    };
+
+    updateContainedPosition();
+    window.addEventListener("resize", updateContainedPosition);
+
+    return () => {
+      window.removeEventListener("resize", updateContainedPosition);
+    };
+  }, [anchorPoint, pickerMode]);
 
   useEffect(() => {
     const focusFrame = window.requestAnimationFrame(() => {
-      getInitialFocusTarget(popoverRef.current, pickerMode, highlightedFret)?.focus();
+      getInitialFocusTarget(popoverRef.current, pickerMode, focusFretRef.current)?.focus();
     });
 
     return () => window.cancelAnimationFrame(focusFrame);
@@ -210,6 +251,7 @@ function FretPickerPopoverContent({
   const handleBackToFrets = () => {
     setTransitionDirection("back");
     setHighlightedFret(sourceFret);
+    focusFretRef.current = sourceFret;
     setPickerMode({ type: "select-fret" });
   };
 
@@ -267,8 +309,12 @@ function FretPickerPopoverContent({
   };
 
   const popoverStyle: FretPickerStyle = {
-    left: position.left,
-    top: position.top,
+    left: containedPosition.left,
+    top: containedPosition.top,
+    "--fret-picker-available-height": `${Math.max(
+      window.innerHeight - containedPosition.top - POPOVER_MARGIN,
+      0,
+    )}px`,
     "--fret-picker-max-width": `${POPOVER_MAX_WIDTH}px`,
     "--fret-picker-margin": `${POPOVER_MARGIN}px`,
   };

@@ -31,6 +31,7 @@ export type ViewportSize = {
 
 export type PopoverPositionOptions = {
   width: number;
+  height?: number;
   margin: number;
   offsetY: number;
   minTop: number;
@@ -190,13 +191,13 @@ export function containPopoverPosition(
   const halfWidth = popoverWidth / 2;
   const minLeft = options.margin + halfWidth;
   const maxLeft = viewport.width - options.margin - halfWidth;
+  const popoverHeight = options.height ?? 0;
+  const minTop = options.minTop;
+  const maxTop = viewport.height - options.margin - popoverHeight;
 
   return {
     x: clamp(anchorPoint.x, minLeft, Math.max(minLeft, maxLeft)),
-    y: Math.min(
-      Math.max(anchorPoint.y + options.offsetY, options.minTop),
-      viewport.height - options.margin,
-    ),
+    y: clamp(anchorPoint.y + options.offsetY, minTop, Math.max(minTop, maxTop)),
   };
 }
 
