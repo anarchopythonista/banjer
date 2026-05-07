@@ -7,15 +7,15 @@ The project is currently centered on the interactive tablature editor MVP.
 ## Screenshots
 
 #### editor overview  
-<img width="1023" height="808" alt="banjer-main-interface-light" src="https://github.com/user-attachments/assets/2f9497c9-bb84-49a5-9b92-e318ac6a1210" />
+<img width="400" height=auto alt="banjer-main-interface-light" src="https://github.com/user-attachments/assets/2f9497c9-bb84-49a5-9b92-e318ac6a1210" />
 
 
-#### fret picker and note editing  
-<img width="411" height="338" alt="banjer-desktop-fret-picker" src="https://github.com/user-attachments/assets/37583eec-9fbe-476b-b4d3-bd031f1eb726" />
+#### fret picker and note editing (dark mode)
+<img width="400" height="auto" alt="banjer-desktop-fret-picker" src="https://github.com/user-attachments/assets/37583eec-9fbe-476b-b4d3-bd031f1eb726" />
 
 
 #### selecting notes on mobile  
-<img width="590" height="1278" alt="banjer-selection-mode-on-mobile" src="https://github.com/user-attachments/assets/ae36e2c7-2272-4dd4-96e4-f8bb24560854" />
+<img width="400" height="auto" alt="banjer-selection-mode-on-mobile" src="https://github.com/user-attachments/assets/ae36e2c7-2272-4dd4-96e4-f8bb24560854" />
 
 
 ## What Banjer Does Today
