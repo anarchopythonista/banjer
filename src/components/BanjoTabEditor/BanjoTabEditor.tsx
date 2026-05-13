@@ -15,6 +15,7 @@ import { usePointerDocumentDrag } from "./hooks/usePointerDocumentDrag";
 import { usePointerMeasureDrag } from "./hooks/usePointerMeasureDrag";
 import { usePointerNoteDrag } from "./hooks/usePointerNoteDrag";
 import { usePointerNoteSelection } from "./hooks/usePointerNoteSelection";
+import { getQuickArticulationIntent } from "./articulationHotkeys";
 import { formatNoteLabel } from "./noteFormatting";
 import {
   createCopiedNoteSelection,
@@ -31,6 +32,7 @@ import type {
   SelectionBounds,
   TabArticulation,
   TabNoteData,
+  TargetedArticulationType,
 } from "./types";
 
 type BanjoTabEditorProps = {
@@ -78,6 +80,7 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
       : undefined;
   const pickerReturnFocusRef = useRef<HTMLElement | null>(null);
   const quickFretTargetRef = useRef<NoteLocation | null>(null);
+  const quickFretTargetElementRef = useRef<HTMLElement | null>(null);
   const [isSelectionModeEnabled, setIsSelectionModeEnabled] = useState(false);
   const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [completedSelectionBounds, setCompletedSelectionBounds] = useState<SelectionBounds | null>(null);
@@ -334,11 +337,12 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
   });
   const trashDropZoneState = getTrashDropZoneState(state.mode, documentDragApi.dragState);
 
-  const openFretPicker = (
+  const openFretPicker = useCallback((
     location: NoteLocation,
     screenPoint: ScreenPoint,
     noteId?: string,
     returnFocusElement?: HTMLElement,
+    initialTargetedArticulation?: TargetedArticulationType,
   ) => {
     setCompletedSelectionBounds(null);
     setCopiedSelection(null);
@@ -350,9 +354,10 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
         location,
         noteId,
         screenPoint,
+        ...(initialTargetedArticulation ? { initialTargetedArticulation } : {}),
       },
     });
-  };
+  }, [dispatch]);
 
   const handleSlotPress = (
     location: NoteLocation,
@@ -411,11 +416,13 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
   const handleQuickFretTargetClear = (location: NoteLocation) => {
     if (locationsMatch(quickFretTargetRef.current, location)) {
       quickFretTargetRef.current = null;
+      quickFretTargetElementRef.current = null;
     }
   };
 
-  const handleQuickFretTarget = (location: NoteLocation) => {
+  const handleQuickFretTarget = (location: NoteLocation, element?: HTMLElement) => {
     quickFretTargetRef.current = location;
+    quickFretTargetElementRef.current = element ?? null;
     if (state.mode.type === "paste-preview") {
       dispatch({
         type: "SET_EDITOR_MODE",
@@ -561,6 +568,43 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
         return;
       }
 
+      if (
+        state.mode.type === "idle" &&
+        quickFretTarget
+      ) {
+        const articulationIntent = getQuickArticulationIntent(event);
+
+        if (articulationIntent) {
+          const note = findNoteAtLocation(state.tab.measures, quickFretTarget);
+
+          if (!note || note.articulation) {
+            return;
+          }
+
+          event.preventDefault();
+          if (articulationIntent.type === "bend") {
+            dispatch({
+              type: "ADD_OR_UPDATE_NOTE",
+              location: quickFretTarget,
+              noteId: note.id,
+              fret: note.fret,
+              articulation: { type: "bend" },
+            });
+            return;
+          }
+
+          const anchorElement = quickFretTargetElementRef.current;
+          openFretPicker(
+            quickFretTarget,
+            getElementCenter(anchorElement),
+            note.id,
+            anchorElement ?? undefined,
+            articulationIntent.articulationType,
+          );
+          return;
+        }
+      }
+
       if (!isUndoRedoShortcut(event)) {
         return;
       }
@@ -595,6 +639,7 @@ export function BanjoTabEditor({ initialState }: BanjoTabEditorProps) {
     copySelection,
     dispatch,
     isSelectionModeEnabled,
+    openFretPicker,
     pasteCopiedSelection,
     redoTabChange,
     state.mode.type,
@@ -832,6 +877,18 @@ function getPointerEventPoint(event: ReactPointerEvent<HTMLElement>): ScreenPoin
   return {
     x: event.clientX,
     y: event.clientY,
+  };
+}
+
+function getElementCenter(element: HTMLElement | null): ScreenPoint {
+  if (!element) {
+    return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+  }
+
+  const rect = element.getBoundingClientRect();
+  return {
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2,
   };
 }
 

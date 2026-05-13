@@ -23,6 +23,11 @@ export type TabArticulation =
   | { type: "slide"; targetFret: number }
   | { type: "bend"; amount?: "unspecified" | "half" | "full" };
 
+export type TargetedArticulationType = Extract<
+  TabArticulation,
+  { targetFret: number }
+>["type"];
+
 export type TabNoteData = {
   id: string;
   stringIndex: number;
@@ -84,6 +89,7 @@ export type EditorMode =
       location: NoteLocation;
       noteId?: string;
       screenPoint: ScreenPoint;
+      initialTargetedArticulation?: TargetedArticulationType;
     }
   | {
       type: "dragging-note";

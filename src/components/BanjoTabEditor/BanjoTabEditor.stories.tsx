@@ -470,6 +470,85 @@ export const QuickDeleteHoveredNoteInteraction: Story = {
   },
 };
 
+export const QuickHammerOnHoveredNoteInteraction: Story = {
+  args: {
+    initialState: makeEditorState([
+      {
+        id: "measure-1",
+        notes: [{ id: "note-1", stringIndex: 0, position: 0, fret: 2 }],
+      },
+    ]),
+  },
+  play: async ({ canvas }) => {
+    const hoveredNote = canvas.getByRole("button", { name: "Edit fret 2 on string 1, slot 1" });
+
+    fireEvent.pointerOver(hoveredNote, {
+      pointerType: "mouse",
+    });
+    fireEvent.keyDown(window, { key: "h" });
+
+    await expect(canvas.getByRole("dialog", { name: "Choose Hammer-on target" })).toBeInTheDocument();
+    await expect(canvas.getByText("2h... choose target")).toBeInTheDocument();
+    await expect(canvas.queryByRole("button", { name: "Add technique for fret 2" })).not.toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Fret 3" }));
+    await expect(canvas.getByRole("button", { name: "Edit fret 2h3 on string 1, slots 1 through 2" })).toBeInTheDocument();
+  },
+};
+
+export const QuickBendHoveredNoteInteraction: Story = {
+  args: {
+    initialState: makeEditorState([
+      {
+        id: "measure-1",
+        notes: [{ id: "note-1", stringIndex: 0, position: 0, fret: 7 }],
+      },
+    ]),
+  },
+  play: async ({ canvas }) => {
+    const hoveredNote = canvas.getByRole("button", { name: "Edit fret 7 on string 1, slot 1" });
+
+    fireEvent.pointerOver(hoveredNote, {
+      pointerType: "mouse",
+    });
+    fireEvent.keyDown(window, { key: "b" });
+
+    await expect(canvas.getByRole("button", { name: "Edit fret 7b on string 1, slot 1" })).toBeInTheDocument();
+    await expect(canvas.queryByRole("dialog")).not.toBeInTheDocument();
+  },
+};
+
+export const QuickArticulationIgnoresArticulatedNoteInteraction: Story = {
+  args: {
+    initialState: makeEditorState([
+      {
+        id: "measure-1",
+        notes: [
+          {
+            id: "note-1",
+            stringIndex: 0,
+            position: 0,
+            fret: 2,
+            durationSlots: 2,
+            articulation: { type: "hammer-on", targetFret: 3 },
+          },
+        ],
+      },
+    ]),
+  },
+  play: async ({ canvas }) => {
+    const hoveredNote = canvas.getByRole("button", { name: "Edit fret 2h3 on string 1, slots 1 through 2" });
+
+    fireEvent.pointerOver(hoveredNote, {
+      pointerType: "mouse",
+    });
+    fireEvent.keyDown(window, { key: "p" });
+
+    await expect(canvas.getByRole("button", { name: "Edit fret 2h3 on string 1, slots 1 through 2" })).toBeInTheDocument();
+    await expect(canvas.queryByRole("dialog")).not.toBeInTheDocument();
+  },
+};
+
 export const DraggingNoteVisualState: Story = {
   args: {
     initialState: {

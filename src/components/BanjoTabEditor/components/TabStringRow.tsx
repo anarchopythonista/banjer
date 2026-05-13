@@ -35,7 +35,7 @@ type TabStringRowProps = {
     screenPoint: ScreenPoint,
     returnFocusElement: HTMLElement,
   ) => void;
-  onQuickFretTarget: (location: NoteLocation) => void;
+  onQuickFretTarget: (location: NoteLocation, element?: HTMLElement) => void;
   onQuickFretTargetClear: (location: NoteLocation) => void;
   dragApi: ReturnType<typeof usePointerNoteDrag>;
   activeSelectionBounds: SelectionBounds | null;
@@ -110,9 +110,9 @@ export function TabStringRow({
               className="banjo-tab-slot-button"
               aria-label={`Set string ${string.order} slot ${index + 1}`}
               onClick={handleSlotClick(index)}
-              onPointerOver={() => onQuickFretTarget(noteLocation(index))}
+              onPointerOver={(event) => onQuickFretTarget(noteLocation(index), event.currentTarget)}
               onPointerOut={() => onQuickFretTargetClear(noteLocation(index))}
-              onFocus={() => onQuickFretTarget(noteLocation(index))}
+              onFocus={(event) => onQuickFretTarget(noteLocation(index), event.currentTarget)}
               onBlur={() => onQuickFretTargetClear(noteLocation(index))}
             />
           ))}

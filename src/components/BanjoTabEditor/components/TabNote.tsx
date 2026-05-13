@@ -13,7 +13,7 @@ type TabNoteProps = {
     screenPoint: { x: number; y: number },
     returnFocusElement: HTMLElement,
   ) => void;
-  onQuickFretTarget: (location: NoteLocation) => void;
+  onQuickFretTarget: (location: NoteLocation, element?: HTMLElement) => void;
   onQuickFretTargetClear: (location: NoteLocation) => void;
   onNotePointerDown: (
     note: TabNoteData,
@@ -158,9 +158,9 @@ export function TabNote({
         data-dragging={isDragging || undefined}
         data-selected={isSelected || undefined}
         data-resizing={mode.type === "resizing-articulation" && mode.noteId === note.id ? true : undefined}
-        onPointerOver={() => onQuickFretTarget(location)}
+        onPointerOver={(event) => onQuickFretTarget(location, event.currentTarget)}
         onPointerOut={() => onQuickFretTargetClear(location)}
-        onFocus={() => onQuickFretTarget(location)}
+        onFocus={(event) => onQuickFretTarget(location, event.currentTarget)}
         onBlur={() => onQuickFretTargetClear(location)}
       >
         <button
@@ -222,9 +222,9 @@ export function TabNote({
       data-selected={isSelected || undefined}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      onPointerOver={() => onQuickFretTarget(location)}
+      onPointerOver={(event) => onQuickFretTarget(location, event.currentTarget)}
       onPointerOut={() => onQuickFretTargetClear(location)}
-      onFocus={() => onQuickFretTarget(location)}
+      onFocus={(event) => onQuickFretTarget(location, event.currentTarget)}
       onBlur={() => onQuickFretTargetClear(location)}
       onPointerDown={handlePointerDown}
       onPointerMove={onNotePointerMove}

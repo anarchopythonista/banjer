@@ -37,7 +37,7 @@ type TabMeasureProps = {
     screenPoint: ScreenPoint,
     returnFocusElement: HTMLElement,
   ) => void;
-  onQuickFretTarget: (location: NoteLocation) => void;
+  onQuickFretTarget: (location: NoteLocation, element?: HTMLElement) => void;
   onQuickFretTargetClear: (location: NoteLocation) => void;
   dragApi: ReturnType<typeof usePointerNoteDrag>;
   measureDragApi: ReturnType<typeof usePointerMeasureDrag>;

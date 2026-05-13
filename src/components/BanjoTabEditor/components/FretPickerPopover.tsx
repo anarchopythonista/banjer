@@ -5,7 +5,12 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from "react";
 import { containPopoverPosition } from "../geometry";
-import type { EditorMode, TabArticulation, TabNoteData } from "../types";
+import type {
+  EditorMode,
+  TabArticulation,
+  TabNoteData,
+  TargetedArticulationType,
+} from "../types";
 
 type FretPickerPopoverProps = {
   mode: EditorMode;
@@ -18,8 +23,6 @@ const FRETS = Array.from({ length: 23 }, (_, fret) => fret);
 const POPOVER_MAX_WIDTH = 316;
 const POPOVER_MARGIN = 16;
 const LONG_PRESS_MS = 350;
-
-type TargetedArticulationType = "hammer-on" | "pull-off" | "slide";
 
 type PickerMode =
   | { type: "select-fret" }
@@ -78,6 +81,7 @@ export function FretPickerPopover({
     mode.location.position,
     mode.noteId ?? "new-note",
     initialFret,
+    mode.initialTargetedArticulation ?? "select-fret",
   ].join(":");
 
   return (
@@ -86,6 +90,7 @@ export function FretPickerPopover({
       anchorPoint={mode.screenPoint}
       currentNote={currentNote}
       initialFret={initialFret}
+      initialTargetedArticulation={mode.initialTargetedArticulation}
       position={position}
       onSelectFret={onSelectFret}
       onClose={onClose}
@@ -97,6 +102,7 @@ type FretPickerPopoverContentProps = {
   anchorPoint: { x: number; y: number };
   currentNote?: TabNoteData;
   initialFret: number;
+  initialTargetedArticulation?: TargetedArticulationType;
   position: PopoverPosition;
   onSelectFret: (fret: number, articulation?: TabArticulation) => void;
   onClose: () => void;
@@ -106,6 +112,7 @@ function FretPickerPopoverContent({
   anchorPoint,
   currentNote,
   initialFret,
+  initialTargetedArticulation,
   position,
   onSelectFret,
   onClose,
@@ -115,7 +122,15 @@ function FretPickerPopoverContent({
   const longPressTimerRef = useRef<number | null>(null);
   const longPressActivatedRef = useRef(false);
   const currentFret = currentNote?.fret;
-  const [pickerMode, setPickerMode] = useState<PickerMode>({ type: "select-fret" });
+  const [pickerMode, setPickerMode] = useState<PickerMode>(() =>
+    initialTargetedArticulation
+      ? {
+          type: "select-target-fret",
+          sourceFret: initialFret,
+          technique: initialTargetedArticulation,
+        }
+      : { type: "select-fret" },
+  );
   const [transitionDirection, setTransitionDirection] = useState<PickerTransitionDirection>("forward");
   const [highlightedFret, setHighlightedFret] = useState(initialFret);
   const focusFretRef = useRef(initialFret);
