@@ -400,7 +400,7 @@
 
 .banjo-tab-staff {
   display: grid;
-  gap: 22px;
+  gap: 10px;
   max-width: 1120px;
   margin: 0 auto;
 }
@@ -418,14 +418,14 @@
 
 .banjo-tab-measure-slot {
   display: grid;
-  gap: 10px;
+  gap: 4px;
 }
 
 .banjo-tab-measure-drop-indicator {
-  height: 8px;
+  height: 4px;
   border-radius: 999px;
   background: var(--tab-accent);
-  box-shadow: 0 0 0 4px var(--tab-drag-ring);
+  box-shadow: 0 0 0 2px var(--tab-drag-ring);
 }
 
 .banjo-tab-measure {
@@ -444,12 +444,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 10px 14px;
+  gap: 10px;
+  min-height: 34px;
+  padding: 3px 10px;
+  box-sizing: border-box;
   border-bottom: 1px solid var(--tab-border);
   color: var(--tab-muted);
   background: var(--tab-panel);
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-weight: 650;
   text-transform: uppercase;
   cursor: grab;
@@ -466,9 +468,9 @@
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
-  padding: 4px 8px;
+  width: 28px;
+  height: 28px;
+  padding: 2px 6px;
   border: 1px solid transparent;
   border-radius: 6px;
   color: inherit;
@@ -505,7 +507,7 @@
 .banjo-tab-measure-title-input {
   width: auto;
   min-width: 0;
-  padding: 4px 6px;
+  padding: 2px 4px;
   border: 1px solid transparent;
   border-radius: 6px;
   color: inherit;
@@ -550,7 +552,7 @@
 .banjo-tab-measure-grid {
   position: relative;
   display: grid;
-  padding: 12px 14px 16px;
+  padding: 4px 10px 6px;
 }
 
 .banjo-tab-string-grid {
@@ -561,7 +563,7 @@
   display: grid;
   grid-template-columns: 32px minmax(280px, 1fr);
   align-items: center;
-  min-height: 52px;
+  min-height: 24px;
 }
 
 .banjo-tab-string-label {
@@ -572,7 +574,7 @@
 
 .banjo-tab-string-track {
   position: relative;
-  min-height: 44px;
+  min-height: 24px;
 }
 
 .banjo-tab-string-track::before {
@@ -596,7 +598,7 @@
 
 .banjo-tab-slot-button {
   min-width: 0;
-  min-height: 44px;
+  min-height: 24px;
   padding: 0;
   border: 0;
   border-left: 1px solid var(--tab-slot-border);
@@ -621,8 +623,8 @@
 
 .banjo-tab-selection-region {
   position: absolute;
-  top: 4px;
-  bottom: 4px;
+  top: 2px;
+  bottom: 2px;
   z-index: 2;
   display: block;
   border: 1px solid var(--tab-highlight-border);
@@ -637,14 +639,14 @@
   z-index: 3;
   display: inline-grid;
   place-items: center;
-  min-width: 30px;
-  height: 28px;
-  padding: 0 7px;
+  min-width: 20px;
+  height: 16px;
+  padding: 0 4px;
   border: 1px solid var(--tab-line);
   border-radius: 999px;
   color: var(--tab-ink);
   background: var(--tab-note-bg);
-  font-size: 0.94rem;
+  font-size: 0.76rem;
   font-weight: 750;
   line-height: 1;
   transform: translate(-50%, -50%);
@@ -659,18 +661,18 @@
 .banjo-tab-note:hover,
 .banjo-tab-note:focus-visible {
   border-color: var(--tab-accent);
-  box-shadow: 0 0 0 3px var(--tab-drag-ring);
+  box-shadow: 0 0 0 2px var(--tab-drag-ring);
   outline: none;
 }
 
 .banjo-tab-note[data-dragging="true"] {
   opacity: 0.52;
-  box-shadow: 0 0 0 4px var(--tab-drag-ring);
+  box-shadow: 0 0 0 2px var(--tab-drag-ring);
 }
 
 .banjo-tab-note[data-selected="true"] {
   border-color: var(--tab-accent);
-  box-shadow: 0 0 0 3px var(--tab-drag-ring);
+  box-shadow: 0 0 0 2px var(--tab-drag-ring);
   outline: none;
 }
 
@@ -684,9 +686,9 @@
 
 .banjo-tab-note--articulation {
   display: block;
-  min-width: 58px;
-  height: 30px;
-  padding: 0 12px;
+  min-width: 34px;
+  height: 16px;
+  padding: 0 6px;
   transform: translateY(-50%);
   overflow: visible;
 }
@@ -697,7 +699,7 @@
 
 .banjo-tab-note--articulation:focus-within {
   border-color: var(--tab-accent);
-  box-shadow: 0 0 0 3px var(--tab-drag-ring);
+  box-shadow: 0 0 0 2px var(--tab-drag-ring);
   outline: none;
 }
 
@@ -714,8 +716,8 @@
 }
 
 .banjo-tab-note-edit:focus-visible {
-  outline: 3px solid var(--tab-focus);
-  outline-offset: 3px;
+  outline: 2px solid var(--tab-focus);
+  outline-offset: 2px;
 }
 
 .banjo-tab-note-fret,
@@ -739,17 +741,17 @@
 }
 
 .banjo-tab-note-fret--start {
-  left: 15px;
+  left: 10px;
 }
 
 .banjo-tab-note-fret--end {
-  left: calc(100% - 15px);
+  left: calc(100% - 10px);
 }
 
 .banjo-tab-note-operator {
   left: 50%;
-  min-width: 18px;
-  padding: 0 3px;
+  min-width: 12px;
+  padding: 0 2px;
   color: var(--tab-accent);
   background: transparent;
   font-weight: 850;
@@ -759,8 +761,8 @@
   position: absolute;
   top: 50%;
   z-index: 4;
-  width: 24px;
-  height: 36px;
+  width: 18px;
+  height: 28px;
   padding: 0;
   border: 0;
   border-radius: 999px;
@@ -771,17 +773,17 @@
 }
 
 .banjo-tab-note-resize--start {
-  left: 15px;
+  left: 10px;
 }
 
 .banjo-tab-note-resize--end {
-  left: calc(100% - 15px);
+  left: calc(100% - 10px);
 }
 
 .banjo-tab-note-resize::after {
   content: "";
   position: absolute;
-  inset: 8px 10px;
+  inset: 8px 7px;
   border-radius: 999px;
   background: var(--tab-accent);
   opacity: 0;
@@ -794,7 +796,7 @@
 }
 
 .banjo-tab-note-resize:focus-visible {
-  outline: 3px solid var(--tab-focus);
+  outline: 2px solid var(--tab-focus);
   outline-offset: 2px;
 }
 
@@ -803,8 +805,8 @@
   top: 50%;
   z-index: 2;
   display: block;
-  width: max(34px, calc(100% / 16 - 4px));
-  height: 38px;
+  width: max(24px, calc(100% / 16 - 4px));
+  height: 24px;
   border: 2px solid var(--tab-highlight-border);
   border-radius: 8px;
   background: var(--tab-highlight-bg);
@@ -814,16 +816,16 @@
 
 .banjo-tab-selection-copy-button {
   position: absolute;
-  top: 8px;
+  top: 4px;
   z-index: 5;
-  min-height: 32px;
-  padding: 0 10px;
+  min-height: 28px;
+  padding: 0 8px;
   border: 1px solid var(--tab-accent);
   border-radius: 6px;
   color: #ffffff;
   background: var(--tab-accent);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 800;
   transform: translateX(-50%);
   cursor: pointer;
@@ -1081,14 +1083,14 @@
   z-index: 40;
   display: inline-grid;
   place-items: center;
-  min-width: 30px;
-  height: 30px;
+  min-width: 20px;
+  height: 18px;
   padding: 0 4px;
   border: 1px solid var(--tab-accent);
   border-radius: 999px;
   color: #ffffff;
   background: var(--tab-accent);
-  font-size: 0.94rem;
+  font-size: 0.76rem;
   font-weight: 800;
   line-height: 1;
   transform: translate(-50%, -50%);

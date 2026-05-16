@@ -34,7 +34,7 @@ describe("BanjoTabEditor mobile header CSS", () => {
 describe("BanjoTabEditor note selection CSS", () => {
   it("renders selected notes with the same ring treatment as hover", () => {
     expect(css).toContain(".banjo-tab-note[data-selected=\"true\"]");
-    expect(css).toContain("box-shadow: 0 0 0 3px var(--tab-drag-ring);");
+    expect(css).toContain("box-shadow: 0 0 0 2px var(--tab-drag-ring);");
   });
 
   it("shows the selection cursor across the measure grid", () => {
@@ -61,9 +61,32 @@ describe("BanjoTabEditor note selection CSS", () => {
 
 describe("BanjoTabEditor articulation note CSS", () => {
   it("keeps expanding articulations visually grouped in one pill", () => {
-    expect(css).toContain(".banjo-tab-note--articulation {\n  display: block;\n  min-width: 58px;");
-    expect(css).toContain(".banjo-tab-note--articulation {\n  display: block;\n  min-width: 58px;\n  height: 30px;");
-    expect(css).toContain(".banjo-tab-note--articulation {\n  display: block;\n  min-width: 58px;\n  height: 30px;\n  padding: 0 12px;");
+    expect(css).toContain(".banjo-tab-note--articulation {\n  display: block;\n  min-width: 34px;");
+    expect(css).toContain(".banjo-tab-note--articulation {\n  display: block;\n  min-width: 34px;\n  height: 16px;");
+    expect(css).toContain(".banjo-tab-note--articulation {\n  display: block;\n  min-width: 34px;\n  height: 16px;\n  padding: 0 6px;");
     expect(css).toContain(".banjo-tab-note--articulation::before {\n  content: none;");
+  });
+});
+
+describe("BanjoTabEditor compact measure CSS", () => {
+  it("uses compact string rows and tappable slot tracks", () => {
+    expect(css).toContain(".banjo-tab-string-row {\n  display: grid;\n  grid-template-columns: 32px minmax(280px, 1fr);\n  align-items: center;\n  min-height: 24px;");
+    expect(css).toContain(".banjo-tab-string-track {\n  position: relative;\n  min-height: 24px;");
+    expect(css).toContain(".banjo-tab-slot-button {\n  min-width: 0;\n  min-height: 24px;");
+  });
+
+  it("keeps measure headers compact while preserving a drag target", () => {
+    expect(css).toContain(".banjo-tab-measure-header {\n  display: flex;");
+    expect(css).toContain("  min-height: 34px;");
+    expect(css).toContain("  padding: 3px 10px;");
+    expect(css).toContain(".banjo-tab-measure-handle {\n  display: inline-flex;");
+    expect(css).toContain("  width: 28px;\n  height: 28px;");
+  });
+
+  it("scales note controls to fit compact rows", () => {
+    expect(css).toContain(".banjo-tab-note {\n  position: absolute;");
+    expect(css).toContain("  min-width: 20px;\n  height: 16px;");
+    expect(css).toContain(".banjo-tab-note--articulation {\n  display: block;\n  min-width: 34px;");
+    expect(css).toContain(".banjo-tab-note--articulation {\n  display: block;\n  min-width: 34px;\n  height: 16px;");
   });
 });
